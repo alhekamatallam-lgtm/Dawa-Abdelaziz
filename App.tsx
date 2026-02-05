@@ -3,18 +3,18 @@ import type { CaseSession, SessionsByDate } from './types';
 import { fetchSessions, updateSessionAssignment } from './services/api';
 import CalendarView from './components/CalendarView';
 import SessionDetails from './components/SessionDetails';
-import { LoadingIcon, ErrorIcon, CalendarIcon, ChartBarIcon, WarningIcon, ClipboardDocumentListIcon } from './components/icons';
+import { ErrorIcon, CalendarIcon, ChartBarIcon, WarningIcon, ClipboardDocumentListIcon } from './components/icons';
 import UpdateModal from './components/UpdateModal';
 import Dashboard from './components/Dashboard';
 import SessionTable from './components/SessionTable';
 import AssignmentsView from './components/AssignmentsView';
 import Logo from './components/Logo';
-import LoadingScreen from './components/LoadingScreen';
+import { CalendarPageSkeleton, DashboardSkeleton, AssignmentsViewSkeleton } from './components/Skeletons';
+
 
 const App: React.FC = () => {
     const [sessions, setSessions] = useState<CaseSession[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [isInitialLoad, setIsInitialLoad] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -29,33 +29,32 @@ const App: React.FC = () => {
         setError(null);
         try {
             const data = await fetchSessions();
-            const formattedData = data.map(session => {
-                const newSession = { ...session };
-                const dateStr = newSession['التاريخ'];
-                if (dateStr && typeof dateStr === 'string' && dateStr.includes('T')) {
-                    try {
-                        const datePart = dateStr.split('T')[0];
-                        const [year, month, day] = datePart.split('-');
-                        if (year && month && day) {
-                            newSession['التاريخ'] = `${day}-${month}-${year}`;
+            const formattedData = data
+                .filter(Boolean) // Filter out any null or undefined session entries
+                .map(session => {
+                    const newSession = { ...session };
+                    const dateStr = newSession['التاريخ'];
+                    if (dateStr && typeof dateStr === 'string' && dateStr.includes('T')) {
+                        try {
+                            const datePart = dateStr.split('T')[0];
+                            const [year, month, day] = datePart.split('-');
+                            if (year && month && day) {
+                                newSession['التاريخ'] = `${day}-${month}-${year}`;
+                            }
+                        } catch (e) {
+                            console.warn('Could not format date:', dateStr);
                         }
-                    } catch (e) {
-                        console.warn('Could not format date:', dateStr);
                     }
-                }
-                return newSession;
-            });
+                    return newSession;
+                });
             setSessions(formattedData);
         } catch (err) {
             setError('فشل في تحميل البيانات. يرجى المحاولة مرة أخرى.');
             console.error(err);
         } finally {
             setIsLoading(false);
-            if (isInitialLoad) {
-                setIsInitialLoad(false);
-            }
         }
-    }, [isInitialLoad]);
+    }, []);
 
     useEffect(() => {
         fetchData();
@@ -75,7 +74,6 @@ const App: React.FC = () => {
     const calendarData = useMemo(() => {
         return Object.entries(sessionsByDate).map(([date, sessionsOnDate]) => {
             const timeMap = new Map<string, CaseSession[]>();
-            // FIX: Add type assertion for sessionsOnDate as it is inferred as 'unknown'.
             (sessionsOnDate as CaseSession[]).forEach(session => {
                 const time = session['وقت الموعد'];
                 if (!timeMap.has(time)) {
@@ -111,7 +109,6 @@ const App: React.FC = () => {
                 }
                 timeMap.get(time)!.push(session);
             });
-            // FIX: Explicitly type sessionsAtTime to resolve 'unknown' type issue.
             timeMap.forEach((sessionsAtTime: CaseSession[]) => {
                 if (sessionsAtTime.length > 1) {
                     conflicts.push(...sessionsAtTime);
@@ -170,10 +167,6 @@ const App: React.FC = () => {
             console.error("Failed to update session:", err);
         }
     };
-
-    if (isInitialLoad) {
-        return <LoadingScreen />;
-    }
     
     return (
         <div className="bg-background min-h-screen text-text">
@@ -213,13 +206,6 @@ const App: React.FC = () => {
             </header>
 
             <main className="container mx-auto p-4">
-                {isLoading && !isInitialLoad && (
-                    <div className="flex flex-col items-center justify-center h-64 text-primary">
-                        <LoadingIcon className="w-12 h-12" />
-                        <p className="mt-4 text-lg">جاري تحديث البيانات...</p>
-                    </div>
-                )}
-
                 {error && (
                      <div className="flex flex-col items-center justify-center h-64 bg-red-50 border border-red-200 text-red-700 rounded-lg p-4">
                         <ErrorIcon className="w-12 h-12" />
@@ -231,45 +217,53 @@ const App: React.FC = () => {
                     </div>
                 )}
 
-                {!isLoading && !error && (
+                {!error && (
                     <>
                         {view === 'calendar' && (
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                <div className="lg:col-span-1">
-                                <CalendarView 
-                                        calendarData={calendarData} 
-                                        onDateSelect={handleDateSelect}
-                                        selectedDate={selectedDate}
-                                        onShowAllConflictsToggle={() => {
-                                            setShowAllConflicts(!showAllConflicts);
-                                            setSelectedDate(null);
-                                        }}
-                                        isShowingAllConflicts={showAllConflicts}
-                                        showOnlyConflictsInDetails={showOnlyConflictsInDetails}
-                                    />
-                                </div>
-                                <div className="lg:col-span-2">
-                                    {showAllConflicts ? (
-                                        <div className="bg-white p-4 rounded-lg shadow-md border-r-4 border-amber-500">
-                                            <div className="flex items-center mb-4">
-                                                <WarningIcon className="w-6 h-6 text-amber-500" />
-                                                <h3 className="text-xl font-bold mr-2 text-amber-700">كافة المواعيد المتعارضة</h3>
-                                            </div>
-                                            <SessionTable sessions={allConflictingSessions} onUpdateClick={handleOpenUpdateModal} showDateColumn={true} conflictingSessionIds={allConflictingSessionIds} />
-                                        </div>
-                                    ) : (
-                                        <SessionDetails 
+                            isLoading ? (
+                                <CalendarPageSkeleton />
+                            ) : (
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    <div className="lg:col-span-1">
+                                    <CalendarView 
+                                            calendarData={calendarData} 
+                                            onDateSelect={handleDateSelect}
                                             selectedDate={selectedDate}
-                                            sessions={selectedDate ? sessionsByDate[selectedDate] : []}
-                                            onUpdateClick={handleOpenUpdateModal}
-                                            showOnlyConflicts={showOnlyConflictsInDetails}
+                                            onShowAllConflictsToggle={() => {
+                                                setShowAllConflicts(!showAllConflicts);
+                                                setSelectedDate(null);
+                                            }}
+                                            isShowingAllConflicts={showAllConflicts}
+                                            showOnlyConflictsInDetails={showOnlyConflictsInDetails}
                                         />
-                                    )}
+                                    </div>
+                                    <div className="lg:col-span-2">
+                                        {showAllConflicts ? (
+                                            <div className="bg-white p-4 rounded-lg shadow-md border-r-4 border-amber-500">
+                                                <div className="flex items-center mb-4">
+                                                    <WarningIcon className="w-6 h-6 text-amber-500" />
+                                                    <h3 className="text-xl font-bold mr-2 text-amber-700">كافة المواعيد المتعارضة</h3>
+                                                </div>
+                                                <SessionTable sessions={allConflictingSessions} onUpdateClick={handleOpenUpdateModal} showDateColumn={true} conflictingSessionIds={allConflictingSessionIds} />
+                                            </div>
+                                        ) : (
+                                            <SessionDetails 
+                                                selectedDate={selectedDate}
+                                                sessions={selectedDate ? sessionsByDate[selectedDate] : []}
+                                                onUpdateClick={handleOpenUpdateModal}
+                                                showOnlyConflicts={showOnlyConflictsInDetails}
+                                            />
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
+                            )
                         )}
-                         {view === 'dashboard' && <Dashboard sessions={sessions} />}
-                         {view === 'assignments' && <AssignmentsView sessions={sessions} onUpdateClick={handleOpenUpdateModal} conflictingSessionIds={allConflictingSessionIds} />}
+                        {view === 'dashboard' && (
+                            isLoading ? <DashboardSkeleton /> : <Dashboard sessions={sessions} />
+                        )}
+                        {view === 'assignments' && (
+                            isLoading ? <AssignmentsViewSkeleton /> : <AssignmentsView sessions={sessions} onUpdateClick={handleOpenUpdateModal} conflictingSessionIds={allConflictingSessionIds} />
+                        )}
                     </>
                 )}
             </main>
