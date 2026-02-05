@@ -1,9 +1,9 @@
+
 import React, { useMemo, useState } from 'react';
 import type { CaseSession } from '../types';
 import StatCard from './StatCard';
 import SessionsByMonthChart from './SessionsByMonthChart';
 import SessionsByCourtChart from './SessionsByCourtChart';
-import SessionsByCircuitChart from './SessionsByCircuitChart';
 import { BriefcaseIcon, AlertTriangleIcon, UserPlusIcon, ClipboardDocumentListIcon } from './icons';
 
 interface DashboardProps {
@@ -113,23 +113,14 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions }) => {
                  <h3 className="text-xl font-bold mb-6 text-dark border-r-4 border-primary pr-4">
                     {filterTitles[filter]}
                 </h3>
-                <div className="space-y-8">
-                    {/* Month Chart Row */}
-                    <div>
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                    <div className="lg:col-span-3">
                         <h4 className="text-lg font-semibold mb-4 text-dark">الجلسات حسب الشهر</h4>
                         <SessionsByMonthChart sessions={filteredSessions} />
                     </div>
-
-                    {/* Court and Circuit Charts Row */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <div>
-                            <h4 className="text-lg font-semibold mb-4 text-dark">توزيع الجلسات على المحاكم</h4>
-                            <SessionsByCourtChart sessions={filteredSessions} />
-                        </div>
-                        <div>
-                            <h4 className="text-lg font-semibold mb-4 text-dark">توزيع الجلسات حسب الدائرة</h4>
-                            <SessionsByCircuitChart sessions={filteredSessions} />
-                        </div>
+                    <div className="lg:col-span-2">
+                        <h4 className="text-lg font-semibold mb-4 text-dark">توزيع الجلسات على المحاكم</h4>
+                        <SessionsByCourtChart sessions={filteredSessions} />
                     </div>
                 </div>
             </div>
