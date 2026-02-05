@@ -26,6 +26,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({ calendarData, onDateSelect,
         return dayA - dayB;
     });
 
+    // If a date is selected, only show that date in the list (pinning it). Otherwise, show all.
+    const dataToDisplay = selectedDate && !isShowingAllConflicts
+        ? sortedData.filter(day => day.date === selectedDate)
+        : sortedData;
+
     return (
         <div className="bg-white p-4 rounded-lg shadow-md h-full">
             <div className="flex items-center justify-between mb-4">
@@ -46,7 +51,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ calendarData, onDateSelect,
                 </button>
             </div>
             <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-2">
-                {sortedData.map(({ date, total, conflicts }) => {
+                {dataToDisplay.map(({ date, total, conflicts }) => {
                     const isSelected = date === selectedDate && !isShowingAllConflicts;
                     const isAllSessionsSelected = isSelected && !showOnlyConflictsInDetails;
                     const isConflictsSelected = isSelected && showOnlyConflictsInDetails;

@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface StatCardProps {
@@ -24,7 +23,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color = 'primar
 
     return (
         <div 
-            className={`bg-white p-6 rounded-lg flex items-center space-x-4 space-x-reverse ${activeClasses} ${hoverClasses} ${cursorClass}`}
+            className={`bg-white p-6 rounded-lg flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-4 md:space-x-reverse ${activeClasses} ${hoverClasses} ${cursorClass}`}
             onClick={onClick}
             role={onClick ? 'button' : 'figure'}
             tabIndex={onClick ? 0 : -1}
@@ -34,7 +33,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color = 'primar
             <div className={`p-4 rounded-full text-white ${colorClasses[color].bg}`}>
                 {icon}
             </div>
-            <div>
+            <div className="text-center md:text-right">
                 <p className="text-text text-sm font-medium">{title}</p>
                 <p className="text-3xl font-bold text-dark">{value}</p>
             </div>

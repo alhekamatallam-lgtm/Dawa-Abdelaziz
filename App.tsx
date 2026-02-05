@@ -3,13 +3,14 @@ import type { CaseSession, SessionsByDate } from './types';
 import { fetchSessions, updateSessionAssignment } from './services/api';
 import CalendarView from './components/CalendarView';
 import SessionDetails from './components/SessionDetails';
-import { ErrorIcon, CalendarIcon, ChartBarIcon, WarningIcon, ClipboardDocumentListIcon } from './components/icons';
+import { ErrorIcon, CalendarIcon, ChartBarIcon, WarningIcon, ClipboardDocumentListIcon, ArrowRightIcon } from './components/icons';
 import UpdateModal from './components/UpdateModal';
 import Dashboard from './components/Dashboard';
 import SessionTable from './components/SessionTable';
 import AssignmentsView from './components/AssignmentsView';
 import Logo from './components/Logo';
 import { CalendarPageSkeleton, DashboardSkeleton, AssignmentsViewSkeleton } from './components/Skeletons';
+import BottomNavBar from './components/BottomNavBar';
 
 
 const App: React.FC = () => {
@@ -175,11 +176,11 @@ const App: React.FC = () => {
                     <div className="flex items-center gap-4">
                         <Logo />
                         <div>
-                            <h1 className="text-2xl font-bold text-dark">المحامي عبد الله سعود آل سعد</h1>
-                            <p className="text-text opacity-90">نظرة عامة على جدول الجلسات والمواعيد</p>
+                            <h1 className="text-xl md:text-2xl font-bold text-dark">المحامي عبد الله سعود آل سعد</h1>
+                            <p className="text-sm text-text opacity-90 hidden sm:block">نظرة عامة على جدول الجلسات والمواعيد</p>
                         </div>
                     </div>
-                     <nav className="flex items-center space-x-2 space-x-reverse">
+                     <nav className="hidden md:flex items-center space-x-2 space-x-reverse">
                         <button 
                             onClick={() => setView('calendar')}
                             className={`flex items-center px-4 py-2 rounded-md font-semibold transition-colors ${view === 'calendar' ? 'bg-primary text-white' : 'bg-light text-text hover:bg-border'}`}
@@ -205,7 +206,7 @@ const App: React.FC = () => {
                 </div>
             </header>
 
-            <main className="container mx-auto p-4">
+            <main className="container mx-auto p-4 pb-20 md:pb-4">
                 {error && (
                      <div className="flex flex-col items-center justify-center h-64 bg-red-50 border border-red-200 text-red-700 rounded-lg p-4">
                         <ErrorIcon className="w-12 h-12" />
@@ -220,12 +221,11 @@ const App: React.FC = () => {
                 {!error && (
                     <>
                         {view === 'calendar' && (
-                            isLoading ? (
-                                <CalendarPageSkeleton />
-                            ) : (
+                            isLoading ? <CalendarPageSkeleton /> : (
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                    <div className="lg:col-span-1">
-                                    <CalendarView 
+                                    {/* Calendar List: Hidden on mobile when a date or all conflicts are selected */}
+                                    <div className={`lg:col-span-1 ${selectedDate || showAllConflicts ? 'hidden lg:block' : 'block'}`}>
+                                        <CalendarView 
                                             calendarData={calendarData} 
                                             onDateSelect={handleDateSelect}
                                             selectedDate={selectedDate}
@@ -237,10 +237,15 @@ const App: React.FC = () => {
                                             showOnlyConflictsInDetails={showOnlyConflictsInDetails}
                                         />
                                     </div>
-                                    <div className="lg:col-span-2">
+
+                                    {/* Details Pane: Hidden on mobile by default, shown when needed */}
+                                    <div className={`lg:col-span-2 ${!selectedDate && !showAllConflicts ? 'hidden lg:block' : 'block'}`}>
                                         {showAllConflicts ? (
                                             <div className="bg-white p-4 rounded-lg shadow-md border-r-4 border-amber-500">
                                                 <div className="flex items-center mb-4">
+                                                    <button onClick={() => setShowAllConflicts(false)} className="lg:hidden p-2 mr-2 -ml-2 rounded-full hover:bg-border">
+                                                        <ArrowRightIcon className="w-5 h-5 text-text" />
+                                                    </button>
                                                     <WarningIcon className="w-6 h-6 text-amber-500" />
                                                     <h3 className="text-xl font-bold mr-2 text-amber-700">كافة المواعيد المتعارضة</h3>
                                                 </div>
@@ -252,6 +257,7 @@ const App: React.FC = () => {
                                                 sessions={selectedDate ? sessionsByDate[selectedDate] : []}
                                                 onUpdateClick={handleOpenUpdateModal}
                                                 showOnlyConflicts={showOnlyConflictsInDetails}
+                                                onBack={() => setSelectedDate(null)}
                                             />
                                         )}
                                     </div>
@@ -274,6 +280,7 @@ const App: React.FC = () => {
                     onUpdate={handleUpdateAssignment}
                 />
             )}
+            <BottomNavBar view={view} setView={setView} />
         </div>
     );
 };
