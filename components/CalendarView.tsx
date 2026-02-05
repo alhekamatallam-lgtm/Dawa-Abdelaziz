@@ -1,11 +1,12 @@
 import React from 'react';
 import type { SessionsByDate } from '../types';
-import { CalendarIcon, WarningIcon } from './icons';
+import { CalendarIcon, WarningIcon, BriefcaseIcon } from './icons';
 
 interface CalendarDay {
     date: string;
     total: number;
     conflicts: number;
+    lawyersCount: number;
 }
 
 interface CalendarViewProps {
@@ -51,7 +52,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ calendarData, onDateSelect,
                 </button>
             </div>
             <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-2">
-                {dataToDisplay.map(({ date, total, conflicts }) => {
+                {dataToDisplay.map(({ date, total, conflicts, lawyersCount }) => {
                     const isSelected = date === selectedDate && !isShowingAllConflicts;
                     const isAllSessionsSelected = isSelected && !showOnlyConflictsInDetails;
                     const isConflictsSelected = isSelected && showOnlyConflictsInDetails;
@@ -69,8 +70,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ calendarData, onDateSelect,
                                 : 'bg-light hover:bg-border text-dark'
                             }`}
                         >
-                            <span className="font-semibold">{date}</span>
-                            <div className="flex items-center space-x-2 space-x-reverse">
+                            <span className="font-semibold text-sm md:text-base">{date}</span>
+                            <div className="flex items-center space-x-1 space-x-reverse">
                                 {conflicts > 0 && (
                                     <span 
                                         onClick={(e) => {
@@ -85,15 +86,24 @@ const CalendarView: React.FC<CalendarViewProps> = ({ calendarData, onDateSelect,
                                                 onDateSelect(date, true);
                                             }
                                         }}
-                                        className={`px-2.5 py-0.5 rounded-full text-sm font-medium transition-colors ${
+                                        className={`px-2 py-0.5 rounded-full text-[10px] md:text-xs font-medium transition-colors ${
                                             isConflictsSelected ? 'bg-white text-amber-600 ring-2 ring-amber-300' : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
                                         }`}
                                     >
                                         {conflicts} تعارض
                                     </span>
                                 )}
-                                <span className={`px-2.5 py-0.5 rounded-full text-sm font-medium ${
-                                    isAllSessionsSelected ? 'bg-white text-primary' : 'bg-border text-dark'
+                                
+                                {lawyersCount > 0 && (
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] md:text-xs font-medium flex items-center ${
+                                        isAllSessionsSelected ? 'bg-primary/20 text-white' : 'bg-blue-50 text-blue-700'
+                                    }`}>
+                                        {lawyersCount} محامي
+                                    </span>
+                                )}
+
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] md:text-xs font-medium ${
+                                    isAllSessionsSelected ? 'bg-white/20 text-white' : 'bg-border text-dark'
                                 }`}>
                                     {total} جلسات
                                 </span>

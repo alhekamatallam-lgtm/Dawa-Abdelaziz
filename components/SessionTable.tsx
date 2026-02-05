@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import type { CaseSession } from '../types';
-import { EditIcon } from './icons';
+import { EditIcon, CalendarIcon } from './icons';
 
 interface SessionTableProps {
     sessions: CaseSession[];
@@ -18,7 +17,7 @@ const SessionTable: React.FC<SessionTableProps> = ({ sessions, onUpdateClick, sh
     };
 
     if (sessions.length === 0) {
-        return <p className="text-text text-center py-4">لا توجد جلسات لعرضها.</p>;
+        return <p className="text-text text-center py-8 bg-light rounded-lg border-2 border-dashed border-border">لا توجد جلسات لعرضها حالياً.</p>;
     }
     
     // Sort sessions by date (if shown) and then by time
@@ -39,18 +38,18 @@ const SessionTable: React.FC<SessionTableProps> = ({ sessions, onUpdateClick, sh
 
 
     return (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-lg border border-border">
             <table className="min-w-full divide-y divide-border">
-                <thead className="bg-light">
+                <thead className="bg-light/50">
                     <tr>
-                        {showDateColumn && <th scope="col" className="px-6 py-4 text-right text-sm font-semibold text-text hidden md:table-cell">التاريخ</th>}
-                        <th scope="col" className="px-6 py-4 text-right text-sm font-semibold text-text">وقت الموعد</th>
-                        <th scope="col" className="px-6 py-4 text-right text-sm font-semibold text-text">رقم الدعوى</th>
-                        <th scope="col" className="px-6 py-4 text-right text-sm font-semibold text-text hidden md:table-cell">المحكمة</th>
-                        <th scope="col" className="px-6 py-4 text-right text-sm font-semibold text-text">الدائرة</th>
-                        <th scope="col" className="px-6 py-4 text-right text-sm font-semibold text-text hidden md:table-cell">نوع الموعد</th>
-                        <th scope="col" className="px-6 py-4 text-right text-sm font-semibold text-text hidden md:table-cell">التكليف</th>
-                        <th scope="col" className="relative px-6 py-4">
+                        {showDateColumn && <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">التاريخ واليوم</th>}
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">التوقيت</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">رقم الدعوى</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider hidden md:table-cell">المحكمة</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">الدائرة</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider hidden lg:table-cell">نوع الموعد</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider hidden md:table-cell">التكليف</th>
+                        <th scope="col" className="relative px-4 py-3 w-10">
                             <span className="sr-only">تعديل</span>
                         </th>
                     </tr>
@@ -61,8 +60,8 @@ const SessionTable: React.FC<SessionTableProps> = ({ sessions, onUpdateClick, sh
                         const isExpanded = expandedRowId === session.id;
 
                         const rowClasses = [
-                            isConflict ? 'bg-amber-50' : 'bg-white',
-                            'hover:' + (isConflict ? 'bg-amber-100' : 'bg-light'),
+                            isConflict ? 'bg-amber-50/60' : 'bg-white',
+                            'hover:' + (isConflict ? 'bg-amber-100/80' : 'bg-light'),
                             'transition-colors duration-150',
                             'cursor-pointer md:cursor-default',
                         ].join(' ');
@@ -73,27 +72,41 @@ const SessionTable: React.FC<SessionTableProps> = ({ sessions, onUpdateClick, sh
                                     className={rowClasses}
                                     onClick={() => handleRowToggle(session.id)}
                                 >
-                                    {showDateColumn && <td className="px-6 py-4 whitespace-nowrap text-sm text-text hidden md:table-cell">{session['التاريخ']}</td>}
+                                    {showDateColumn && (
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-bold text-primary">{session['التاريخ']}</span>
+                                                <span className="text-[10px] text-text opacity-70">{session['اليوم']}</span>
+                                            </div>
+                                        </td>
+                                    )}
                                     
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-dark">{session['وقت الموعد']} {session['ص- م']}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-text">{session['رقم الدعوى']}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                        <div className="flex items-center text-sm font-medium text-dark">
+                                            <span>{session['وقت الموعد']}</span>
+                                            <span className="mr-1 text-[10px] text-text font-normal">{session['ص- م']}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-text">{session['رقم الدعوى']}</td>
                                     
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-text hidden md:table-cell">{session['المحكمة']}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-text hidden md:table-cell max-w-[150px] truncate">{session['المحكمة']}</td>
                                     
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-text">{session['الدائرة'] || <span className="text-text opacity-75 italic">غير محدد</span>}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-text">{session['الدائرة'] || <span className="text-text opacity-50 italic">---</span>}</td>
 
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-text hidden md:table-cell">{session['نوع الموعد']}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-text hidden md:table-cell">
-                                        {session['التكليف'] || <span className="text-text opacity-75 italic">لم يتم التكليف</span>}
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-text hidden lg:table-cell">{session['نوع الموعد']}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-text hidden md:table-cell">
+                                        <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${session['التكليف'] ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'}`}>
+                                            {session['التكليف'] || 'لم يكلف'}
+                                        </span>
                                     </td>
 
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <td className="px-4 py-3 whitespace-nowrap text-right">
                                         <button
                                             onClick={(e) => {
-                                                e.stopPropagation(); // Prevent row click from firing
+                                                e.stopPropagation();
                                                 onUpdateClick(session);
                                             }}
-                                            className="p-2 text-primary hover:text-dark hover:bg-border rounded-full transition-colors"
+                                            className="p-1.5 text-primary hover:text-dark hover:bg-border rounded-lg transition-colors border border-transparent hover:border-border"
                                             aria-label={`تعديل تكليف الدعوى ${session['رقم الدعوى']}`}
                                         >
                                             <EditIcon className="w-5 h-5" />
@@ -102,24 +115,23 @@ const SessionTable: React.FC<SessionTableProps> = ({ sessions, onUpdateClick, sh
                                 </tr>
                                 {isExpanded && (
                                     <tr className={`md:hidden ${isConflict ? 'bg-amber-50' : 'bg-white'}`}>
-                                        <td colSpan={4} className="p-0"> {/* Mobile has 4 cols: Time, Case, Circuit, Edit */}
-                                            <div className="px-6 py-4 bg-light border-l-4 border-primary">
-                                                <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-2 text-sm">
-                                                    <div className="font-semibold text-text">المحكمة:</div>
-                                                    <div className="text-dark">{session['المحكمة']}</div>
-
-                                                    <div className="font-semibold text-text">نوع الموعد:</div>
-                                                    <div className="text-dark">{session['نوع الموعد']}</div>
-
-                                                    <div className="font-semibold text-text">التكليف:</div>
-                                                    <div className="text-dark">{session['التكليف'] || <span className="text-text opacity-75 italic">لم يتم التكليف</span>}</div>
-
-                                                    {showDateColumn && (
-                                                        <>
-                                                            <div className="font-semibold text-text">التاريخ:</div>
-                                                            <div className="text-dark">{session['التاريخ']}</div>
-                                                        </>
-                                                    )}
+                                        <td colSpan={showDateColumn ? 6 : 5} className="p-0">
+                                            <div className="px-4 py-4 bg-light/80 border-r-4 border-primary m-2 rounded-lg shadow-inner">
+                                                <div className="grid grid-cols-2 gap-4 text-xs">
+                                                    <div>
+                                                        <p className="font-bold text-text mb-1">المحكمة</p>
+                                                        <p className="text-dark">{session['المحكمة']}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-text mb-1">نوع الموعد</p>
+                                                        <p className="text-dark">{session['نوع الموعد']}</p>
+                                                    </div>
+                                                    <div className="col-span-2">
+                                                        <p className="font-bold text-text mb-1">التكليف الحالي</p>
+                                                        <p className={`${session['التكليف'] ? 'text-green-700 font-bold' : 'text-text opacity-60 italic'}`}>
+                                                            {session['التكليف'] || 'لا يوجد تكليف مسجل لهذه الجلسة'}
+                                                        </p>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </td>

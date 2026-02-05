@@ -1,15 +1,16 @@
 import React from 'react';
-import { CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon } from './icons';
+import { CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon, BriefcaseIcon } from './icons';
 
 interface BottomNavBarProps {
-    view: 'calendar' | 'dashboard' | 'assignments';
-    setView: (view: 'calendar' | 'dashboard' | 'assignments') => void;
+    view: 'calendar' | 'dashboard' | 'assignments' | 'lawyer_report';
+    setView: (view: 'calendar' | 'dashboard' | 'assignments' | 'lawyer_report') => void;
 }
 
 const navItems = [
     { id: 'calendar', label: 'التقويم', icon: CalendarIcon },
     { id: 'dashboard', label: 'لوحة التحكم', icon: ChartBarIcon },
     { id: 'assignments', label: 'التكليف', icon: ClipboardDocumentListIcon },
+    { id: 'lawyer_report', label: 'المندوبين', icon: BriefcaseIcon },
 ];
 
 const BottomNavBar: React.FC<BottomNavBarProps> = ({ view, setView }) => {
@@ -26,7 +27,7 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ view, setView }) => {
                             className={`flex flex-col items-center justify-center w-full transition-colors duration-200 p-2 ${isActive ? 'text-primary' : 'text-gray-500 hover:text-primary'}`}
                         >
                             <Icon className="w-6 h-6 mb-1" />
-                            <span className="text-xs font-medium">{item.label}</span>
+                            <span className="text-[10px] font-medium">{item.label}</span>
                         </button>
                     );
                 })}
