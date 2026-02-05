@@ -199,7 +199,7 @@ const App: React.FC = () => {
                              className={`flex items-center px-4 py-2 rounded-md font-semibold transition-colors ${view === 'assignments' ? 'bg-primary text-white' : 'bg-light text-text hover:bg-border'}`}
                         >
                             <ClipboardDocumentListIcon className="w-5 h-5 ml-2" />
-                            <span>التكليفات</span>
+                            <span>التكليف</span>
                         </button>
                     </nav>
                 </div>
