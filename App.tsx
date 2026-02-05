@@ -29,22 +29,24 @@ const App: React.FC = () => {
         setError(null);
         try {
             const data = await fetchSessions();
-            const formattedData = data.map(session => {
-                const newSession = { ...session };
-                const dateStr = newSession['التاريخ'];
-                if (dateStr && typeof dateStr === 'string' && dateStr.includes('T')) {
-                    try {
-                        const datePart = dateStr.split('T')[0];
-                        const [year, month, day] = datePart.split('-');
-                        if (year && month && day) {
-                            newSession['التاريخ'] = `${day}-${month}-${year}`;
+            const formattedData = data
+                .filter(Boolean) // Filter out any null or undefined session entries
+                .map(session => {
+                    const newSession = { ...session };
+                    const dateStr = newSession['التاريخ'];
+                    if (dateStr && typeof dateStr === 'string' && dateStr.includes('T')) {
+                        try {
+                            const datePart = dateStr.split('T')[0];
+                            const [year, month, day] = datePart.split('-');
+                            if (year && month && day) {
+                                newSession['التاريخ'] = `${day}-${month}-${year}`;
+                            }
+                        } catch (e) {
+                            console.warn('Could not format date:', dateStr);
                         }
-                    } catch (e) {
-                        console.warn('Could not format date:', dateStr);
                     }
-                }
-                return newSession;
-            });
+                    return newSession;
+                });
             setSessions(formattedData);
         } catch (err) {
             setError('فشل في تحميل البيانات. يرجى المحاولة مرة أخرى.');
