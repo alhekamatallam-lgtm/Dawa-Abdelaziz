@@ -15,8 +15,8 @@ const navItems = [
 
 const BottomNavBar: React.FC<BottomNavBarProps> = ({ view, setView }) => {
     return (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-border shadow-[0_-1px_3px_rgba(0,0,0,0.05)] z-20">
-            <div className="flex justify-around items-center h-16">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-border shadow-[0_-8px_30px_rgb(0,0,0,0.06)] z-[100] pb-[env(safe-area-inset-bottom)]">
+            <div className="flex justify-around items-center h-16 max-w-screen-xl mx-auto">
                 {navItems.map((item) => {
                     const isActive = view === item.id;
                     const Icon = item.icon;
@@ -24,10 +24,20 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ view, setView }) => {
                         <button
                             key={item.id}
                             onClick={() => setView(item.id as any)}
-                            className={`flex flex-col items-center justify-center w-full transition-colors duration-200 p-2 ${isActive ? 'text-primary' : 'text-gray-500 hover:text-primary'}`}
+                            className={`relative flex flex-col items-center justify-center w-full transition-all duration-300 p-2 ${isActive ? 'text-primary' : 'text-gray-400 hover:text-text'}`}
                         >
-                            <Icon className="w-6 h-6 mb-1" />
-                            <span className="text-[10px] font-medium">{item.label}</span>
+                            {/* Active Indicator Bar - Top line for clarity */}
+                            {isActive && (
+                                <span className="absolute top-0 w-8 h-1 bg-primary rounded-b-full animate-in slide-in-from-top-1 duration-300"></span>
+                            )}
+                            
+                            <div className={`transition-transform duration-300 ${isActive ? 'scale-110 -translate-y-0.5' : 'scale-100'}`}>
+                                <Icon className={`w-6 h-6 mb-1 ${isActive ? 'drop-shadow-[0_0_8px_rgba(140,120,81,0.2)]' : ''}`} />
+                            </div>
+                            
+                            <span className={`text-[10px] font-bold transition-all ${isActive ? 'opacity-100' : 'opacity-70'}`}>
+                                {item.label}
+                            </span>
                         </button>
                     );
                 })}
