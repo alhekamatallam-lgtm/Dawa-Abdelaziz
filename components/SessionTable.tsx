@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { CaseSession } from '../types';
-import { EditIcon, CalendarIcon } from './icons';
+import { EditIcon } from './icons';
 
 interface SessionTableProps {
     sessions: CaseSession[];
@@ -20,7 +20,6 @@ const SessionTable: React.FC<SessionTableProps> = ({ sessions, onUpdateClick, sh
         return <p className="text-text text-center py-8 bg-light rounded-lg border-2 border-dashed border-border">لا توجد جلسات لعرضها حالياً.</p>;
     }
     
-    // Sort sessions by date (if shown) and then by time
     const sortedSessions = [...sessions].sort((a, b) => {
         if (showDateColumn) {
             const parseDate = (dateStr: string) => {
@@ -58,18 +57,12 @@ const SessionTable: React.FC<SessionTableProps> = ({ sessions, onUpdateClick, sh
                     {sortedSessions.map((session) => {
                         const isConflict = conflictingSessionIds?.has(session.id);
                         const isExpanded = expandedRowId === session.id;
-
-                        const rowClasses = [
-                            isConflict ? 'bg-amber-50/60' : 'bg-white',
-                            'hover:' + (isConflict ? 'bg-amber-100/80' : 'bg-light'),
-                            'transition-colors duration-150',
-                            'cursor-pointer md:cursor-default',
-                        ].join(' ');
+                        const circuitName = (session['الدائرة'] || '').trim();
 
                         return (
                             <React.Fragment key={session.id}>
                                 <tr 
-                                    className={rowClasses}
+                                    className={`${isConflict ? 'bg-amber-50/60' : 'bg-white'} hover:${isConflict ? 'bg-amber-100/80' : 'bg-light'} transition-colors cursor-pointer md:cursor-default`}
                                     onClick={() => handleRowToggle(session.id)}
                                 >
                                     {showDateColumn && (
@@ -91,7 +84,13 @@ const SessionTable: React.FC<SessionTableProps> = ({ sessions, onUpdateClick, sh
                                     
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-text hidden md:table-cell max-w-[150px] truncate">{session['المحكمة']}</td>
                                     
-                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-text">{session['الدائرة'] || <span className="text-text opacity-50 italic">---</span>}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                        {circuitName ? (
+                                            <span className="text-text font-medium">{circuitName}</span>
+                                        ) : (
+                                            <span className="text-text/40 italic text-xs">غير محدد</span>
+                                        )}
+                                    </td>
 
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-text hidden lg:table-cell">{session['نوع الموعد']}</td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-text hidden md:table-cell">
@@ -107,7 +106,6 @@ const SessionTable: React.FC<SessionTableProps> = ({ sessions, onUpdateClick, sh
                                                 onUpdateClick(session);
                                             }}
                                             className="p-1.5 text-primary hover:text-dark hover:bg-border rounded-lg transition-colors border border-transparent hover:border-border"
-                                            aria-label={`تعديل تكليف الدعوى ${session['رقم الدعوى']}`}
                                         >
                                             <EditIcon className="w-5 h-5" />
                                         </button>
@@ -119,17 +117,17 @@ const SessionTable: React.FC<SessionTableProps> = ({ sessions, onUpdateClick, sh
                                             <div className="px-4 py-4 bg-light/80 border-r-4 border-primary m-2 rounded-lg shadow-inner">
                                                 <div className="grid grid-cols-2 gap-4 text-xs">
                                                     <div>
-                                                        <p className="font-bold text-text mb-1">المحكمة</p>
+                                                        <p className="font-bold text-text mb-1 text-[10px] opacity-60">المحكمة</p>
                                                         <p className="text-dark">{session['المحكمة']}</p>
                                                     </div>
                                                     <div>
-                                                        <p className="font-bold text-text mb-1">نوع الموعد</p>
+                                                        <p className="font-bold text-text mb-1 text-[10px] opacity-60">نوع الموعد</p>
                                                         <p className="text-dark">{session['نوع الموعد']}</p>
                                                     </div>
                                                     <div className="col-span-2">
-                                                        <p className="font-bold text-text mb-1">التكليف الحالي</p>
-                                                        <p className={`${session['التكليف'] ? 'text-green-700 font-bold' : 'text-text opacity-60 italic'}`}>
-                                                            {session['التكليف'] || 'لا يوجد تكليف مسجل لهذه الجلسة'}
+                                                        <p className="font-bold text-text mb-1 text-[10px] opacity-60">التكليف الحالي</p>
+                                                        <p className={`${session['التكليف'] ? 'text-green-700 font-bold' : 'text-text/50 italic'}`}>
+                                                            {session['التكليف'] || 'لا يوجد تكليف'}
                                                         </p>
                                                     </div>
                                                 </div>

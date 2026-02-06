@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import type { CaseSession } from '../types';
 import SessionTable from './SessionTable';
 import { ClipboardDocumentListIcon, ArrowRightIcon, WarningIcon } from './icons';
@@ -20,14 +20,44 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     onClearFilter,
     showOnlyConflicts = false
 }) => {
-    // حساب التعارضات الخاصة بهذا المحامي تحديداً
-    const lawyerSpecificConflictIds = useMemo(() => {
-        if (!lawyerFilter || !showOnlyConflicts) return conflictingSessionIds;
+    // حالات الفلترة المحلية
+    const [selectedCircuit, setSelectedCircuit] = useState<string>('');
+    const [selectedLawyer, setSelectedLawyer] = useState<string>('');
 
-        const lawyerSessions = sessions.filter(s => s['التكليف']?.trim() === lawyerFilter.trim());
-        const timeMap = new Map<string, number[]>(); // مفتاح: التاريخ_الوقت ، قيمة: مصفوفة معرفات الجلسات
+    // تزامن الفلتر القادم من التقارير مع القائمة المنسدلة
+    useEffect(() => {
+        if (lawyerFilter) {
+            setSelectedLawyer(lawyerFilter);
+        } else {
+            setSelectedLawyer('');
+        }
+    }, [lawyerFilter]);
+
+    // استخراج الدوائر الفريدة للفلتر
+    const uniqueCircuits = useMemo(() => {
+        const circuits = sessions
+            .map(s => (s['الدائرة'] || '').trim())
+            .filter(Boolean);
+        return Array.from(new Set(circuits)).sort();
+    }, [sessions]);
+
+    // استخراج المحامين الفريدين للفلتر
+    const uniqueLawyers = useMemo(() => {
+        const lawyers = sessions
+            .map(s => (s['التكليف'] || '').trim())
+            .filter(Boolean);
+        return Array.from(new Set(lawyers)).sort();
+    }, [sessions]);
+
+    // حساب التعارضات الخاصة بناءً على الفلاتر المختارة
+    const lawyerSpecificConflictIds = useMemo(() => {
+        const currentLawyer = selectedLawyer || lawyerFilter;
+        if (!currentLawyer || !showOnlyConflicts) return conflictingSessionIds;
+
+        const filteredByLawyer = sessions.filter(s => (s['التكليف'] || '').trim() === currentLawyer.trim());
+        const timeMap = new Map<string, number[]>();
         
-        lawyerSessions.forEach(s => {
+        filteredByLawyer.forEach(s => {
             const key = `${s['التاريخ']}_${s['وقت الموعد']}`;
             if (!timeMap.has(key)) timeMap.set(key, []);
             timeMap.get(key)!.push(s.id);
@@ -41,87 +71,144 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         });
 
         return specificIds;
-    }, [sessions, lawyerFilter, showOnlyConflicts, conflictingSessionIds]);
+    }, [sessions, selectedLawyer, lawyerFilter, showOnlyConflicts, conflictingSessionIds]);
 
     const assignedSessions = useMemo(() => {
+        // نبدأ بالجلسات التي تحتوي على تكليف فقط
         let baseSessions = sessions.filter(session => session['التكليف'] && session['التكليف'].trim() !== '');
         
-        if (lawyerFilter) {
-            baseSessions = baseSessions.filter(s => s['التكليف'].trim() === lawyerFilter.trim());
+        // تطبيق فلتر الدائرة
+        if (selectedCircuit) {
+            baseSessions = baseSessions.filter(s => (s['الدائرة'] || '').trim() === selectedCircuit);
+        }
+
+        // تطبيق فلتر المحامي (الأولوية للمختار من القائمة، ثم القادم من البروبس)
+        const activeLawyer = selectedLawyer || lawyerFilter;
+        if (activeLawyer) {
+            baseSessions = baseSessions.filter(s => (s['التكليف'] || '').trim() === activeLawyer.trim());
         }
         
-        if (showOnlyConflicts && lawyerFilter) {
-            // تصفية الجلسات لتشمل فقط تلك التي تتعارض مع جلسات أخرى لنفس المحامي
+        // تطبيق فلتر التعارضات
+        if (showOnlyConflicts) {
             baseSessions = baseSessions.filter(s => lawyerSpecificConflictIds.has(s.id));
-        } else if (showOnlyConflicts) {
-            // تعارضات عامة في حال عدم وجود فلتر محامي
-            baseSessions = baseSessions.filter(s => conflictingSessionIds.has(s.id));
         }
         
         return baseSessions;
-    }, [sessions, lawyerFilter, showOnlyConflicts, lawyerSpecificConflictIds, conflictingSessionIds]);
+    }, [sessions, selectedCircuit, selectedLawyer, lawyerFilter, showOnlyConflicts, lawyerSpecificConflictIds]);
+
+    const handleResetFilters = () => {
+        setSelectedCircuit('');
+        setSelectedLawyer('');
+        if (onClearFilter) onClearFilter();
+    };
 
     return (
         <div className="bg-white p-4 md:p-6 rounded-xl shadow-md animate-in fade-in slide-in-from-left-4 duration-500">
-            {lawyerFilter ? (
-                <div className="mb-6">
-                    <div className={`flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl border gap-4 ${showOnlyConflicts ? 'bg-red-50 border-red-100' : 'bg-primary/5 border-primary/10'}`}>
-                        <div className="flex items-center">
-                            <div className={`p-2 rounded-lg ml-3 ${showOnlyConflicts ? 'bg-red-600 text-white animate-pulse' : 'bg-primary text-white'}`}>
-                                {showOnlyConflicts ? <WarningIcon className="w-5 h-5" /> : <ClipboardDocumentListIcon className="w-5 h-5" />}
-                            </div>
-                            <div>
-                                <h2 className="text-lg font-bold text-dark">
-                                    {showOnlyConflicts ? `تدقيق تعارضات: ${lawyerFilter}` : `جدول أعمال: ${lawyerFilter}`}
-                                </h2>
-                                <p className="text-xs text-text opacity-70">
-                                    {showOnlyConflicts 
-                                        ? 'يتم عرض الجلسات التي تتداخل زمنياً في جدول هذا المحامي فقط' 
-                                        : 'يتم عرض كافة الجلسات المكلفة لهذا المحامي'}
-                                </p>
-                            </div>
-                        </div>
-                        <button 
-                            onClick={onClearFilter}
-                            className="flex items-center justify-center px-4 py-2 bg-white text-primary border border-primary/20 rounded-lg text-sm font-bold hover:bg-primary hover:text-white transition-all shadow-sm"
+            {/* Header Area */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4 border-b border-border pb-6">
+                <div className="flex items-center">
+                    <div className="p-3 bg-primary/10 rounded-xl ml-4">
+                        <ClipboardDocumentListIcon className="w-8 h-8 text-primary" />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-bold text-dark">جدول كافة التكليفات</h2>
+                        <p className="text-sm text-text opacity-70">إدارة وتصفية مهام أعضاء المكتب</p>
+                    </div>
+                </div>
+                
+                {/* Filters Section */}
+                <div className="flex flex-wrap gap-3">
+                    {/* Circuit Filter */}
+                    <div className="flex flex-col min-w-[150px]">
+                        <label className="text-[10px] font-bold text-text mb-1 mr-1">تصفية حسب الدائرة</label>
+                        <select 
+                            value={selectedCircuit}
+                            onChange={(e) => setSelectedCircuit(e.target.value)}
+                            className="bg-light border border-border rounded-lg px-3 py-2 text-sm font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer"
                         >
-                            <span>إلغاء الفرز</span>
-                            <ArrowRightIcon className="w-4 h-4 mr-2" />
+                            <option value="">جميع الدوائر</option>
+                            {uniqueCircuits.map(circuit => (
+                                <option key={circuit} value={circuit}>{circuit}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Lawyer Filter */}
+                    <div className="flex flex-col min-w-[150px]">
+                        <label className="text-[10px] font-bold text-text mb-1 mr-1">تصفية حسب التكليف</label>
+                        <select 
+                            value={selectedLawyer}
+                            onChange={(e) => setSelectedLawyer(e.target.value)}
+                            className="bg-light border border-border rounded-lg px-3 py-2 text-sm font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer"
+                        >
+                            <option value="">جميع المكلفين</option>
+                            {uniqueLawyers.map(lawyer => (
+                                <option key={lawyer} value={lawyer}>{lawyer}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Reset Button */}
+                    <div className="flex items-end">
+                        <button 
+                            onClick={handleResetFilters}
+                            className="p-2 text-primary hover:bg-primary/5 rounded-lg transition-colors group"
+                            title="إعادة ضبط الفلاتر"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 group-hover:rotate-180 transition-transform duration-500">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                            </svg>
                         </button>
                     </div>
                 </div>
-            ) : (
-                <div className="flex items-center mb-6 border-b border-border pb-4">
-                    <ClipboardDocumentListIcon className="w-8 h-8 text-primary" />
-                    <div className="mr-3">
-                        <h2 className="text-2xl font-bold text-dark">جدول كافة التكليفات</h2>
-                        <p className="text-sm text-text opacity-70">استعراض وتعديل تكليفات جميع أعضاء المكتب</p>
+            </div>
+
+            {/* Special Mode Banner (Conflicts) */}
+            {showOnlyConflicts && (
+                <div className="mb-6 bg-red-50 border border-red-100 p-4 rounded-xl flex items-center justify-between animate-pulse">
+                    <div className="flex items-center">
+                        <WarningIcon className="w-5 h-5 text-red-600 ml-3" />
+                        <div>
+                            <h4 className="text-sm font-bold text-red-800">وضع تدقيق التعارضات مفعل</h4>
+                            <p className="text-xs text-red-700 opacity-80">يتم عرض الجلسات المتداخلة زمنياً فقط بناءً على الفلاتر الحالية.</p>
+                        </div>
                     </div>
                 </div>
             )}
             
-            <SessionTable 
-                sessions={assignedSessions} 
-                onUpdateClick={onUpdateClick} 
-                showDateColumn={true}
-                conflictingSessionIds={lawyerSpecificConflictIds}
-            />
+            {/* Table Area */}
+            <div className="min-h-[300px]">
+                <SessionTable 
+                    sessions={assignedSessions} 
+                    onUpdateClick={onUpdateClick} 
+                    showDateColumn={true}
+                    conflictingSessionIds={lawyerSpecificConflictIds}
+                />
 
-            {assignedSessions.length === 0 && showOnlyConflicts && lawyerFilter && (
-                <div className="py-12 text-center">
-                    <div className="bg-green-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600">
-                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                        </svg>
+                {/* Empty State */}
+                {assignedSessions.length === 0 && (
+                    <div className="py-20 text-center bg-light/30 rounded-xl border-2 border-dashed border-border mt-2">
+                        <div className="bg-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-border">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-lg font-bold text-dark">لا توجد نتائج</h3>
+                        <p className="text-sm text-text mt-1 max-w-xs mx-auto">لم نعثر على أي جلسات مكلفة تطابق الفلاتر المختارة حالياً.</p>
+                        <button 
+                            onClick={handleResetFilters}
+                            className="mt-6 px-6 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-dark transition-all shadow-md shadow-primary/20"
+                        >
+                            عرض جميع التكليفات
+                        </button>
                     </div>
-                    <h3 className="text-lg font-bold text-dark">لا يوجد تعارضات شخصية</h3>
-                    <p className="text-sm text-text mt-1">جدول {lawyerFilter} منظم وخالٍ من التداخلات الزمنية.</p>
-                </div>
-            )}
+                )}
+            </div>
 
             {assignedSessions.length > 0 && (
-                <div className="mt-4 p-3 bg-light/50 rounded-lg text-[10px] text-text text-center italic">
-                    تم العثور على {assignedSessions.length} جلسة تطابق معايير الفرز الحالية.
+                <div className="mt-6 pt-4 border-t border-border flex justify-between items-center text-[10px] text-text">
+                    <span className="font-medium italic">تم العثور على {assignedSessions.length} جلسة مطابقة</span>
+                    <span className="opacity-50">آخر تحديث: الآن</span>
                 </div>
             )}
         </div>

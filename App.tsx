@@ -12,6 +12,7 @@ import LawyerReport from './components/LawyerReport';
 import Logo from './components/Logo';
 import { CalendarPageSkeleton, DashboardSkeleton, AssignmentsViewSkeleton } from './components/Skeletons';
 import BottomNavBar from './components/BottomNavBar';
+import LoadingScreen from './components/LoadingScreen';
 
 
 const App: React.FC = () => {
@@ -56,7 +57,8 @@ const App: React.FC = () => {
             setError('فشل في تحميل البيانات. يرجى المحاولة مرة أخرى.');
             console.error(err);
         } finally {
-            setIsLoading(false);
+            // نترك شاشة التحميل لفترة قصيرة لتعطي مظهراً جمالياً
+            setTimeout(() => setIsLoading(false), 1200);
         }
     }, []);
 
@@ -183,13 +185,18 @@ const App: React.FC = () => {
         setShowOnlyLawyerConflicts(onlyConflicts);
         setView('assignments');
     };
+
+    // عرض شاشة الدخول أولاً إذا كان النظام يحمل
+    if (isLoading && !error) {
+        return <LoadingScreen />;
+    }
     
     return (
         <div className="bg-background min-h-screen text-text">
             <header className="bg-white shadow-sm sticky top-0 z-10 border-b-4 border-primary">
                 <div className="container mx-auto px-4 py-3 flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                        <Logo />
+                        <Logo className="h-12 w-12 md:h-14 md:w-14" />
                         <div className="leading-tight">
                             <h1 className="text-lg md:text-2xl font-bold text-dark">المحامي عبدالله آل سعد</h1>
                             <p className="text-[10px] md:text-sm text-text opacity-75 sm:block hidden">منصة إدارة الجلسات والمواعيد</p>
@@ -243,65 +250,63 @@ const App: React.FC = () => {
                 {!error && (
                     <>
                         {view === 'calendar' && (
-                            isLoading ? <CalendarPageSkeleton /> : (
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                    <div className={`lg:col-span-1 ${selectedDate || showAllConflicts ? 'hidden lg:block' : 'block'}`}>
-                                        <CalendarView 
-                                            calendarData={calendarData} 
-                                            onDateSelect={handleDateSelect}
-                                            selectedDate={selectedDate}
-                                            onShowAllConflictsToggle={() => {
-                                                setShowAllConflicts(!showAllConflicts);
-                                                setSelectedDate(null);
-                                            }}
-                                            isShowingAllConflicts={showAllConflicts}
-                                            showOnlyConflictsInDetails={showOnlyConflictsInDetails}
-                                        />
-                                    </div>
-
-                                    <div className={`lg:col-span-2 ${!selectedDate && !showAllConflicts ? 'hidden lg:block' : 'block'}`}>
-                                        {showAllConflicts ? (
-                                            <div className="bg-white p-4 md:p-6 rounded-xl shadow-md border-r-4 border-amber-500 overflow-hidden">
-                                                <div className="flex items-center justify-between mb-6">
-                                                    <div className="flex items-center">
-                                                        <button onClick={() => setShowAllConflicts(false)} className="lg:hidden p-2 ml-2 rounded-full hover:bg-border transition-colors">
-                                                            <ArrowRightIcon className="w-5 h-5 text-text" />
-                                                        </button>
-                                                        <WarningIcon className="w-6 h-6 text-amber-500" />
-                                                        <h3 className="text-xl font-bold mr-2 text-dark">كافة التعارضات المرصودة</h3>
-                                                    </div>
-                                                    <span className="bg-amber-100 text-amber-800 text-[10px] md:text-xs px-2 py-1 rounded-full font-bold">
-                                                        {allConflictingSessions.length} جلسة متداخلة
-                                                    </span>
-                                                </div>
-                                                <SessionTable 
-                                                    sessions={allConflictingSessions} 
-                                                    onUpdateClick={handleOpenUpdateModal} 
-                                                    showDateColumn={true} 
-                                                    conflictingSessionIds={allConflictingSessionIds} 
-                                                />
-                                            </div>
-                                        ) : (
-                                            <SessionDetails 
-                                                selectedDate={selectedDate}
-                                                sessions={selectedDate ? sessionsByDate[selectedDate] : []}
-                                                onUpdateClick={handleOpenUpdateModal}
-                                                showOnlyConflicts={showOnlyConflictsInDetails}
-                                                onBack={() => setSelectedDate(null)}
-                                            />
-                                        )}
-                                    </div>
+                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <div className={`lg:col-span-1 ${selectedDate || showAllConflicts ? 'hidden lg:block' : 'block'}`}>
+                                    <CalendarView 
+                                        calendarData={calendarData} 
+                                        onDateSelect={handleDateSelect}
+                                        selectedDate={selectedDate}
+                                        onShowAllConflictsToggle={() => {
+                                            setShowAllConflicts(!showAllConflicts);
+                                            setSelectedDate(null);
+                                        }}
+                                        isShowingAllConflicts={showAllConflicts}
+                                        showOnlyConflictsInDetails={showOnlyConflictsInDetails}
+                                    />
                                 </div>
-                            )
+
+                                <div className={`lg:col-span-2 ${!selectedDate && !showAllConflicts ? 'hidden lg:block' : 'block'}`}>
+                                    {showAllConflicts ? (
+                                        <div className="bg-white p-4 md:p-6 rounded-xl shadow-md border-r-4 border-amber-500 overflow-hidden">
+                                            <div className="flex items-center justify-between mb-6">
+                                                <div className="flex items-center">
+                                                    <button onClick={() => setShowAllConflicts(false)} className="lg:hidden p-2 ml-2 rounded-full hover:bg-border transition-colors">
+                                                        <ArrowRightIcon className="w-5 h-5 text-text" />
+                                                    </button>
+                                                    <WarningIcon className="w-6 h-6 text-amber-500" />
+                                                    <h3 className="text-xl font-bold mr-2 text-dark">كافة التعارضات المرصودة</h3>
+                                                </div>
+                                                <span className="bg-amber-100 text-amber-800 text-[10px] md:text-xs px-2 py-1 rounded-full font-bold">
+                                                    {allConflictingSessions.length} جلسة متداخلة
+                                                </span>
+                                            </div>
+                                            <SessionTable 
+                                                sessions={allConflictingSessions} 
+                                                onUpdateClick={handleOpenUpdateModal} 
+                                                showDateColumn={true} 
+                                                conflictingSessionIds={allConflictingSessionIds} 
+                                            />
+                                        </div>
+                                    ) : (
+                                        <SessionDetails 
+                                            selectedDate={selectedDate}
+                                            sessions={selectedDate ? sessionsByDate[selectedDate] : []}
+                                            onUpdateClick={handleOpenUpdateModal}
+                                            showOnlyConflicts={showOnlyConflictsInDetails}
+                                            onBack={() => setSelectedDate(null)}
+                                        />
+                                    )}
+                                </div>
+                            </div>
                         )}
                         {view === 'dashboard' && (
-                            isLoading ? <DashboardSkeleton /> : <Dashboard sessions={sessions} />
+                            <Dashboard sessions={sessions} />
                         )}
                         {view === 'assignments' && (
-                            isLoading ? <AssignmentsViewSkeleton /> : <AssignmentsView sessions={sessions} onUpdateClick={handleOpenUpdateModal} conflictingSessionIds={allConflictingSessionIds} lawyerFilter={lawyerFilter} onClearFilter={() => { setLawyerFilter(null); setShowOnlyLawyerConflicts(false); }} showOnlyConflicts={showOnlyLawyerConflicts} />
+                            <AssignmentsView sessions={sessions} onUpdateClick={handleOpenUpdateModal} conflictingSessionIds={allConflictingSessionIds} lawyerFilter={lawyerFilter} onClearFilter={() => { setLawyerFilter(null); setShowOnlyLawyerConflicts(false); }} showOnlyConflicts={showOnlyLawyerConflicts} />
                         )}
                         {view === 'lawyer_report' && (
-                            isLoading ? <DashboardSkeleton /> : <LawyerReport sessions={sessions} onLawyerClick={handleLawyerSelect} />
+                            <LawyerReport sessions={sessions} onLawyerClick={handleLawyerSelect} />
                         )}
                     </>
                 )}

@@ -1,11 +1,16 @@
-
 import React from 'react';
 
-const Logo: React.FC = () => {
-    const logoBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAMKADAAQAAAABAAAAMAAAAADj1e5DAAAB1ElEQVRoBe2ZP0vDUBSHc+9pBxVwaAPEKS59ge4qX8FN3EQfQx/AB1U7dBE6uTo4iIMrq4uL0FHQoYOICv4A1UBCBC1toYf3Jkgh7S01TW5y3sm95z33T3LS3qQg/k+cOi1jJ+tZ/xP5D/yEi8Qik8g8k0wSkbySyL+Q+K74f/UZsNjpjV3kEzKJJJNkAgmVSGRG8tY8/V0dzzb/mfpnPz/fB5qR4sEjkUgyQSaRSCSzR/JN8rlu9v29tTz/PHEf3t2/QCtIIpEkkwgi8UjyU6S+q4k/9y2z/X0fsv29R2s+AZ0gkUgkk0QiyUdy/VfH19uz83PzC9u36AVIJJIkk2Qi8Qp1X7Y/7W07H5/f3N2/QCtIIpEkE2Qi8V1X/TzVfN+2vN+v1/f2/p/Pz/sHNIJEIkkmyQSJRCK5JPlpbr7N9ff79QY0gUQiySSTRCKRJJPIDJJskt8a5v/XNc+3bfu3t2f7e3/u/m3997e3/9e/Pz+3t2sNaAKJRCJJJpEkk8hMEt8lkryU/HrL9vftnI/P7/f7NZt/2/78/Jz/9e0a0AQSiSSRSCSTRCKRJJPIDJJMEslnkp8eZvv7Pab9/QY0gUQiySSTRCKRJJPIDJJMEsl3Jf8H2z8A7g6sRgNSkKAAAAAASUVORK5CYII=";
+const Logo: React.FC<{ className?: string }> = ({ className = "h-16 w-16" }) => {
+    const logoUrl = "https://russeell.etqansoft.com/files/alsaad.jpg";
     
     return (
-        <img src={logoBase64} alt="شعار مكتب المحامي عبد الله سعود آل سعد" className="h-16 w-16" />
+        <div className={`${className} overflow-hidden rounded-xl border-2 border-primary/20 shadow-sm`}>
+            <img 
+                src={logoUrl} 
+                alt="شعار مكتب المحامي عبد الله سعود آل سعد" 
+                className="w-full h-full object-cover"
+            />
+        </div>
     );
 };
 
