@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import type { CaseSession } from '../types';
 import SessionTable from './SessionTable';
@@ -23,6 +24,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     // حالات الفلترة المحلية
     const [selectedCircuit, setSelectedCircuit] = useState<string>('');
     const [selectedLawyer, setSelectedLawyer] = useState<string>('');
+    const [selectedDay, setSelectedDay] = useState<string>('');
 
     // تزامن الفلتر القادم من التقارير مع القائمة المنسدلة
     useEffect(() => {
@@ -47,6 +49,19 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
             .map(s => (s['التكليف'] || '').trim())
             .filter(Boolean);
         return Array.from(new Set(lawyers)).sort();
+    }, [sessions]);
+
+    // استخراج الأيام الفريدة للفلتر
+    const uniqueDays = useMemo(() => {
+        const days = sessions
+            .map(s => (s['اليوم'] || '').trim())
+            .filter(Boolean);
+        // ترتيب الأيام منطقياً حسب أيام الأسبوع لو أمكن، أو أبجدياً كبديل
+        const dayOrder = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+        return Array.from(new Set(days)).sort((a: any, b: any) => {
+            // Fix: Explicitly cast 'a' and 'b' to string to resolve 'unknown' type error in dayOrder.indexOf
+            return dayOrder.indexOf(a as string) - dayOrder.indexOf(b as string);
+        });
     }, [sessions]);
 
     // حساب التعارضات الخاصة بناءً على الفلاتر المختارة
@@ -82,6 +97,11 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
             baseSessions = baseSessions.filter(s => (s['الدائرة'] || '').trim() === selectedCircuit);
         }
 
+        // تطبيق فلتر اليوم
+        if (selectedDay) {
+            baseSessions = baseSessions.filter(s => (s['اليوم'] || '').trim() === selectedDay);
+        }
+
         // تطبيق فلتر المحامي (الأولوية للمختار من القائمة، ثم القادم من البروبس)
         const activeLawyer = selectedLawyer || lawyerFilter;
         if (activeLawyer) {
@@ -94,18 +114,19 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         }
         
         return baseSessions;
-    }, [sessions, selectedCircuit, selectedLawyer, lawyerFilter, showOnlyConflicts, lawyerSpecificConflictIds]);
+    }, [sessions, selectedCircuit, selectedDay, selectedLawyer, lawyerFilter, showOnlyConflicts, lawyerSpecificConflictIds]);
 
     const handleResetFilters = () => {
         setSelectedCircuit('');
         setSelectedLawyer('');
+        setSelectedDay('');
         if (onClearFilter) onClearFilter();
     };
 
     return (
         <div className="bg-white p-4 md:p-6 rounded-xl shadow-md animate-in fade-in slide-in-from-left-4 duration-500">
             {/* Header Area */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4 border-b border-border pb-6">
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between mb-6 gap-6 border-b border-border pb-6">
                 <div className="flex items-center">
                     <div className="p-3 bg-primary/10 rounded-xl ml-4">
                         <ClipboardDocumentListIcon className="w-8 h-8 text-primary" />
@@ -117,14 +138,29 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                 </div>
                 
                 {/* Filters Section */}
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap items-end gap-3">
+                    {/* Day Filter */}
+                    <div className="flex flex-col min-w-[120px]">
+                        <label className="text-[10px] font-bold text-text mb-1 mr-1">تصفية حسب اليوم</label>
+                        <select 
+                            value={selectedDay}
+                            onChange={(e) => setSelectedDay(e.target.value)}
+                            className="bg-light border border-border rounded-lg px-3 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer"
+                        >
+                            <option value="">جميع الأيام</option>
+                            {uniqueDays.map(day => (
+                                <option key={day} value={day}>{day}</option>
+                            ))}
+                        </select>
+                    </div>
+
                     {/* Circuit Filter */}
-                    <div className="flex flex-col min-w-[150px]">
+                    <div className="flex flex-col min-w-[140px]">
                         <label className="text-[10px] font-bold text-text mb-1 mr-1">تصفية حسب الدائرة</label>
                         <select 
                             value={selectedCircuit}
                             onChange={(e) => setSelectedCircuit(e.target.value)}
-                            className="bg-light border border-border rounded-lg px-3 py-2 text-sm font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer"
+                            className="bg-light border border-border rounded-lg px-3 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer"
                         >
                             <option value="">جميع الدوائر</option>
                             {uniqueCircuits.map(circuit => (
@@ -134,12 +170,12 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                     </div>
 
                     {/* Lawyer Filter */}
-                    <div className="flex flex-col min-w-[150px]">
+                    <div className="flex flex-col min-w-[140px]">
                         <label className="text-[10px] font-bold text-text mb-1 mr-1">تصفية حسب التكليف</label>
                         <select 
                             value={selectedLawyer}
                             onChange={(e) => setSelectedLawyer(e.target.value)}
-                            className="bg-light border border-border rounded-lg px-3 py-2 text-sm font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer"
+                            className="bg-light border border-border rounded-lg px-3 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer"
                         >
                             <option value="">جميع المكلفين</option>
                             {uniqueLawyers.map(lawyer => (
@@ -149,17 +185,15 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                     </div>
 
                     {/* Reset Button */}
-                    <div className="flex items-end">
-                        <button 
-                            onClick={handleResetFilters}
-                            className="p-2 text-primary hover:bg-primary/5 rounded-lg transition-colors group"
-                            title="إعادة ضبط الفلاتر"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 group-hover:rotate-180 transition-transform duration-500">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                            </svg>
-                        </button>
-                    </div>
+                    <button 
+                        onClick={handleResetFilters}
+                        className="p-2.5 text-primary hover:bg-primary/5 rounded-lg transition-colors group border border-border bg-white"
+                        title="إعادة ضبط الفلاتر"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                        </svg>
+                    </button>
                 </div>
             </div>
 
