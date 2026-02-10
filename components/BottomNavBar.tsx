@@ -1,9 +1,9 @@
 import React from 'react';
-import { CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon, BriefcaseIcon } from './icons';
+import { CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon, BriefcaseIcon, UserGroupIcon } from './icons';
 
 interface BottomNavBarProps {
-    view: 'calendar' | 'dashboard' | 'assignments' | 'lawyer_report';
-    setView: (view: 'calendar' | 'dashboard' | 'assignments' | 'lawyer_report') => void;
+    view: 'calendar' | 'dashboard' | 'assignments' | 'lawyer_report' | 'plaintiff_report';
+    setView: (view: 'calendar' | 'dashboard' | 'assignments' | 'lawyer_report' | 'plaintiff_report') => void;
 }
 
 const navItems = [
@@ -11,6 +11,7 @@ const navItems = [
     { id: 'dashboard', label: 'لوحة التحكم', icon: ChartBarIcon },
     { id: 'assignments', label: 'التكليف', icon: ClipboardDocumentListIcon },
     { id: 'lawyer_report', label: 'المندوبين', icon: BriefcaseIcon },
+    { id: 'plaintiff_report', label: 'المدعين', icon: UserGroupIcon },
 ];
 
 const BottomNavBar: React.FC<BottomNavBarProps> = ({ view, setView }) => {

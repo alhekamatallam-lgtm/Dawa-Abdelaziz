@@ -3,12 +3,13 @@ import type { CaseSession, SessionsByDate } from './types';
 import { fetchSessions, updateSessionAssignment } from './services/api';
 import CalendarView from './components/CalendarView';
 import SessionDetails from './components/SessionDetails';
-import { ErrorIcon, CalendarIcon, ChartBarIcon, WarningIcon, ClipboardDocumentListIcon, ArrowRightIcon, BriefcaseIcon } from './components/icons';
+import { ErrorIcon, CalendarIcon, ChartBarIcon, WarningIcon, ClipboardDocumentListIcon, ArrowRightIcon, BriefcaseIcon, UserGroupIcon } from './components/icons';
 import UpdateModal from './components/UpdateModal';
 import Dashboard from './components/Dashboard';
 import SessionTable from './components/SessionTable';
 import AssignmentsView from './components/AssignmentsView';
 import LawyerReport from './components/LawyerReport';
+import PlaintiffReport from './components/PlaintiffReport';
 import Logo from './components/Logo';
 import { CalendarPageSkeleton, DashboardSkeleton, AssignmentsViewSkeleton } from './components/Skeletons';
 import BottomNavBar from './components/BottomNavBar';
@@ -22,11 +23,14 @@ const App: React.FC = () => {
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
     const [sessionToUpdate, setSessionToUpdate] = useState<CaseSession | null>(null);
-    const [view, setView] = useState<'calendar' | 'dashboard' | 'assignments' | 'lawyer_report'>('calendar');
+    const [view, setView] = useState<'calendar' | 'dashboard' | 'assignments' | 'lawyer_report' | 'plaintiff_report'>('calendar');
     const [showAllConflicts, setShowAllConflicts] = useState<boolean>(false);
     const [showOnlyConflictsInDetails, setShowOnlyConflictsInDetails] = useState<boolean>(false);
     const [lawyerFilter, setLawyerFilter] = useState<string | null>(null);
+    const [plaintiffFilter, setPlaintiffFilter] = useState<string | null>(null);
     const [showOnlyLawyerConflicts, setShowOnlyLawyerConflicts] = useState<boolean>(false);
+    const [showOnlyPlaintiffConflicts, setShowOnlyPlaintiffConflicts] = useState<boolean>(false);
+    const [showOnlyUpcomingDays, setShowOnlyUpcomingDays] = useState<boolean>(true);
 
 
     const fetchData = useCallback(async () => {
@@ -38,6 +42,7 @@ const App: React.FC = () => {
                 .filter(Boolean) 
                 .map(session => {
                     const newSession = { ...session };
+                    
                     const dateStr = newSession['التاريخ'];
                     if (dateStr && typeof dateStr === 'string' && dateStr.includes('T')) {
                         try {
@@ -50,6 +55,27 @@ const App: React.FC = () => {
                             console.warn('Could not format date:', dateStr);
                         }
                     }
+
+                    const timeStr = newSession['وقت الموعد'];
+                    if (timeStr && typeof timeStr === 'string' && timeStr.includes('T')) {
+                        try {
+                            const timePart = timeStr.split('T')[1];
+                            const [hoursStr, minutes] = timePart.split(':');
+                            if (hoursStr && minutes) {
+                                let hours = parseInt(hoursStr, 10);
+                                const ampm = hours >= 12 ? 'م' : 'ص';
+                                hours = hours % 12;
+                                hours = hours ? hours : 12;
+                                const hours12 = String(hours).padStart(2, '0');
+                                
+                                newSession['وقت الموعد'] = `${hours12}:${minutes}`;
+                                newSession['ص- م'] = ampm;
+                            }
+                        } catch (e) {
+                            console.warn('Could not format time:', timeStr);
+                        }
+                    }
+
                     return newSession;
                 });
             setSessions(formattedData);
@@ -57,7 +83,6 @@ const App: React.FC = () => {
             setError('فشل في تحميل البيانات. يرجى المحاولة مرة أخرى.');
             console.error(err);
         } finally {
-            // نترك شاشة التحميل لفترة قصيرة لتعطي مظهراً جمالياً
             setTimeout(() => setIsLoading(false), 1200);
         }
     }, []);
@@ -83,7 +108,7 @@ const App: React.FC = () => {
             const uniqueLawyers = new Set<string>();
             
             (sessionsOnDate as CaseSession[]).forEach(session => {
-                const time = session['وقت الموعد'];
+                const time = session['وقت الموعد'] + session['ص- م'];
                 if (!timeMap.has(time)) {
                     timeMap.set(time, []);
                 }
@@ -115,7 +140,7 @@ const App: React.FC = () => {
             const sessionsOnDate = sessionsByDate[date];
             const timeMap = new Map<string, CaseSession[]>();
             sessionsOnDate.forEach(session => {
-                const time = session['وقت الموعد'];
+                const time = session['وقت الموعد'] + session['ص- م'];
                 if (!timeMap.has(time)) {
                     timeMap.set(time, []);
                 }
@@ -138,11 +163,33 @@ const App: React.FC = () => {
             if (dateAStr !== dateBStr) {
                 return dateAStr.localeCompare(dateBStr);
             }
-            return a['وقت الموعد'].localeCompare(b['وقت الموعد']);
+            const getTimeIn24h = (session: CaseSession) => {
+                const time = session['وقت الموعد'];
+                const ampm = session['ص- م'];
+                if (!time || !time.includes(':')) return 0;
+                let [hours, minutes] = time.split(':').map(Number);
+        
+                if (ampm === 'م' && hours !== 12) {
+                    hours += 12;
+                }
+                if (ampm === 'ص' && hours === 12) { 
+                    hours = 0;
+                }
+                return hours * 60 + (minutes || 0);
+            };
+        
+            return getTimeIn24h(a) - getTimeIn24h(b);
         });
     }, [sessionsByDate]);
 
     const allConflictingSessionIds = useMemo(() => new Set(allConflictingSessions.map(s => s.id)), [allConflictingSessions]);
+    
+    const handleClearFilters = () => {
+        setLawyerFilter(null);
+        setPlaintiffFilter(null);
+        setShowOnlyLawyerConflicts(false);
+        setShowOnlyPlaintiffConflicts(false);
+    }
 
     const handleDateSelect = (date: string, showConflictsOnly = false) => {
         if (selectedDate === date && showOnlyConflictsInDetails === showConflictsOnly) {
@@ -185,8 +232,13 @@ const App: React.FC = () => {
         setShowOnlyLawyerConflicts(onlyConflicts);
         setView('assignments');
     };
+    
+    const handlePlaintiffSelect = (plaintiffName: string, onlyConflicts: boolean = false) => {
+        setPlaintiffFilter(plaintiffName);
+        setShowOnlyPlaintiffConflicts(onlyConflicts);
+        setView('assignments');
+    };
 
-    // عرض شاشة الدخول أولاً إذا كان النظام يحمل
     if (isLoading && !error) {
         return <LoadingScreen />;
     }
@@ -204,32 +256,39 @@ const App: React.FC = () => {
                     </div>
                      <nav className="hidden md:flex items-center space-x-2 space-x-reverse">
                         <button 
-                            onClick={() => { setView('calendar'); setLawyerFilter(null); setShowOnlyLawyerConflicts(false); }}
+                            onClick={() => { setView('calendar'); handleClearFilters(); }}
                             className={`flex items-center px-4 py-2 rounded-lg font-semibold transition-all ${view === 'calendar' ? 'bg-primary text-white shadow-md' : 'bg-light text-text hover:bg-border'}`}
                         >
                             <CalendarIcon className="w-5 h-5 ml-2" />
                             <span>التقويم</span>
                         </button>
                         <button
-                             onClick={() => { setView('dashboard'); setLawyerFilter(null); setShowOnlyLawyerConflicts(false); }}
+                             onClick={() => { setView('dashboard'); handleClearFilters(); }}
                              className={`flex items-center px-4 py-2 rounded-lg font-semibold transition-all ${view === 'dashboard' ? 'bg-primary text-white shadow-md' : 'bg-light text-text hover:bg-border'}`}
                         >
                             <ChartBarIcon className="w-5 h-5 ml-2" />
                             <span>لوحة التحكم</span>
                         </button>
                          <button
-                             onClick={() => { setView('assignments'); setLawyerFilter(null); setShowOnlyLawyerConflicts(false); }}
+                             onClick={() => { setView('assignments'); handleClearFilters(); }}
                              className={`flex items-center px-4 py-2 rounded-lg font-semibold transition-all ${view === 'assignments' ? 'bg-primary text-white shadow-md' : 'bg-light text-text hover:bg-border'}`}
                         >
                             <ClipboardDocumentListIcon className="w-5 h-5 ml-2" />
                             <span>التكليف</span>
                         </button>
                         <button
-                             onClick={() => { setView('lawyer_report'); setLawyerFilter(null); setShowOnlyLawyerConflicts(false); }}
+                             onClick={() => { setView('lawyer_report'); handleClearFilters(); }}
                              className={`flex items-center px-4 py-2 rounded-lg font-semibold transition-all ${view === 'lawyer_report' ? 'bg-primary text-white shadow-md' : 'bg-light text-text hover:bg-border'}`}
                         >
                             <BriefcaseIcon className="w-5 h-5 ml-2" />
                             <span>تقرير المندوبين</span>
+                        </button>
+                        <button
+                             onClick={() => { setView('plaintiff_report'); handleClearFilters(); }}
+                             className={`flex items-center px-4 py-2 rounded-lg font-semibold transition-all ${view === 'plaintiff_report' ? 'bg-primary text-white shadow-md' : 'bg-light text-text hover:bg-border'}`}
+                        >
+                            <UserGroupIcon className="w-5 h-5 ml-2" />
+                            <span>تقرير المدعين</span>
                         </button>
                     </nav>
                 </div>
@@ -262,6 +321,8 @@ const App: React.FC = () => {
                                         }}
                                         isShowingAllConflicts={showAllConflicts}
                                         showOnlyConflictsInDetails={showOnlyConflictsInDetails}
+                                        showOnlyUpcomingDays={showOnlyUpcomingDays}
+                                        onShowOnlyUpcomingDaysToggle={() => setShowOnlyUpcomingDays(!showOnlyUpcomingDays)}
                                     />
                                 </div>
 
@@ -303,10 +364,13 @@ const App: React.FC = () => {
                             <Dashboard sessions={sessions} />
                         )}
                         {view === 'assignments' && (
-                            <AssignmentsView sessions={sessions} onUpdateClick={handleOpenUpdateModal} conflictingSessionIds={allConflictingSessionIds} lawyerFilter={lawyerFilter} onClearFilter={() => { setLawyerFilter(null); setShowOnlyLawyerConflicts(false); }} showOnlyConflicts={showOnlyLawyerConflicts} />
+                            <AssignmentsView sessions={sessions} onUpdateClick={handleOpenUpdateModal} conflictingSessionIds={allConflictingSessionIds} lawyerFilter={lawyerFilter} plaintiffFilter={plaintiffFilter} onClearFilter={handleClearFilters} showOnlyConflicts={showOnlyLawyerConflicts || showOnlyPlaintiffConflicts} />
                         )}
                         {view === 'lawyer_report' && (
                             <LawyerReport sessions={sessions} onLawyerClick={handleLawyerSelect} />
+                        )}
+                         {view === 'plaintiff_report' && (
+                            <PlaintiffReport sessions={sessions} onPlaintiffClick={handlePlaintiffSelect} />
                         )}
                     </>
                 )}

@@ -23,7 +23,7 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({ selectedDate, sessions,
         if (!sessions || sessions.length === 0) return new Set<number>();
         const timeMap = new Map<string, CaseSession[]>();
         sessions.forEach(session => {
-            const time = session['وقت الموعد'];
+            const time = session['وقت الموعد'] + session['ص- م'];
             if (!timeMap.has(time)) timeMap.set(time, []);
             timeMap.get(time)!.push(session);
         });

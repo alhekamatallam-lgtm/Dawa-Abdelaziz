@@ -15,6 +15,8 @@ export interface CaseSession {
   "الشهر": number;
   "التاريخ": string;
   "التكليف": string;
+  "المدعي": string;
+  "المدعي عليه": string;
 }
 
 export interface SessionsByDate {

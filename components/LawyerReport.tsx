@@ -49,7 +49,7 @@ const LawyerReport: React.FC<LawyerReportProps> = ({ sessions, onLawyerClick }) 
             const dateTimeMap: Record<string, CaseSession[]> = {};
             
             lawyer.sessions.forEach(s => {
-                const key = `${s['التاريخ']}_${s['وقت الموعد']}`;
+                const key = `${s['التاريخ']}_${s['وقت الموعد']}_${s['ص- م']}`;
                 if (!dateTimeMap[key]) dateTimeMap[key] = [];
                 dateTimeMap[key].push(s);
             });

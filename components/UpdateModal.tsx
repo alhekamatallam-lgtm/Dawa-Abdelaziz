@@ -68,6 +68,16 @@ const UpdateModal: React.FC<UpdateModalProps> = ({ session, onClose, onUpdate })
                             <span className="text-xs text-text opacity-70">الدائرة:</span>
                             <span className="text-xs font-bold text-dark">{session['الدائرة'] || 'غير محددة'}</span>
                         </div>
+                        <div className="pt-2 mt-2 border-t border-border/50">
+                            <div className="flex justify-between">
+                                <span className="text-xs text-text opacity-70">المدعي:</span>
+                                <span className="text-xs font-bold text-dark">{session['المدعي'] || '-'}</span>
+                            </div>
+                            <div className="flex justify-between mt-1">
+                                <span className="text-xs text-text opacity-70">المدعي عليه:</span>
+                                <span className="text-xs font-bold text-dark">{session['المدعي عليه'] || '-'}</span>
+                            </div>
+                        </div>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-5">

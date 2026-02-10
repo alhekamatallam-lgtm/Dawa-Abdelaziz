@@ -20,7 +20,7 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions }) => {
         const timeMap = new Map<string, Map<string, CaseSession[]>>();
         sessions.forEach(session => {
             const date = session['التاريخ'];
-            const time = session['وقت الموعد'];
+            const time = session['وقت الموعد'] + session['ص- م'];
             if (!timeMap.has(date)) {
                 timeMap.set(date, new Map<string, CaseSession[]>());
             }
