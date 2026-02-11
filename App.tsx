@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { CaseSession, SessionsByDate } from './types';
 import { fetchSessions, updateSessionAssignment } from './services/api';
@@ -43,16 +44,28 @@ const App: React.FC = () => {
                 .map(session => {
                     const newSession = { ...session };
                     
-                    const dateStr = newSession['التاريخ'];
-                    if (dateStr && typeof dateStr === 'string' && dateStr.includes('T')) {
-                        try {
-                            const datePart = dateStr.split('T')[0];
-                            const [year, month, day] = datePart.split('-');
-                            if (year && month && day) {
-                                newSession['التاريخ'] = `${day}-${month}-${year}`;
+                    let dateStr = newSession['التاريخ'];
+                    if (dateStr && typeof dateStr === 'string') {
+                        // Clean the date string by removing quotes and trimming whitespace
+                        const cleanedDateStr = dateStr.replace(/["']/g, "").trim();
+
+                        if (cleanedDateStr.includes('T')) {
+                            // Handle ISO string format
+                            try {
+                                const datePart = cleanedDateStr.split('T')[0];
+                                const [year, month, day] = datePart.split('-');
+                                if (year && month && day) {
+                                    newSession['التاريخ'] = `${day}-${month}-${year}`;
+                                } else {
+                                    newSession['التاريخ'] = cleanedDateStr; // Fallback
+                                }
+                            } catch (e) {
+                                console.warn('Could not format ISO date:', cleanedDateStr);
+                                newSession['التاريخ'] = cleanedDateStr; // Fallback
                             }
-                        } catch (e) {
-                            console.warn('Could not format date:', dateStr);
+                        } else {
+                            // Assume it's already in DD-MM-YYYY format, just ensure it's the cleaned version
+                            newSession['التاريخ'] = cleanedDateStr;
                         }
                     }
 

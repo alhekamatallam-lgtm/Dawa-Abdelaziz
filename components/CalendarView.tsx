@@ -30,8 +30,19 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     onShowOnlyUpcomingDaysToggle
 }) => {
     const sortedData = [...calendarData].sort((a, b) => {
-        const [dayA, monthA, yearA] = a.date.split('-').map(Number);
-        const [dayB, monthB, yearB] = b.date.split('-').map(Number);
+        const partsA = (a.date || '').split('-').map(Number);
+        const partsB = (b.date || '').split('-').map(Number);
+
+        const isAValid = partsA.length === 3 && !partsA.some(isNaN);
+        const isBValid = partsB.length === 3 && !partsB.some(isNaN);
+
+        if (isAValid && !isBValid) return -1;
+        if (!isAValid && isBValid) return 1;
+        if (!isAValid && !isBValid) return 0;
+
+        const [dayA, monthA, yearA] = partsA;
+        const [dayB, monthB, yearB] = partsB;
+
         if (yearA !== yearB) return yearA - yearB;
         if (monthA !== monthB) return monthA - monthB;
         return dayA - dayB;
