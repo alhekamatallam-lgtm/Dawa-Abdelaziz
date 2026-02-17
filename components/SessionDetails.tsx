@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import type { CaseSession } from '../types';
 import SessionTable from './SessionTable';
@@ -14,7 +15,6 @@ interface SessionDetailsProps {
 const SessionDetails: React.FC<SessionDetailsProps> = ({ selectedDate, sessions, onUpdateClick, showOnlyConflicts, onBack }) => {
     const [selectedCircuit, setSelectedCircuit] = useState<string | null>(null);
 
-    // إعادة ضبط الفلتر عند تغيير التاريخ أو وضع التعارضات
     useEffect(() => {
         setSelectedCircuit(null);
     }, [selectedDate, showOnlyConflicts]);
@@ -23,7 +23,7 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({ selectedDate, sessions,
         if (!sessions || sessions.length === 0) return new Set<number>();
         const timeMap = new Map<string, CaseSession[]>();
         sessions.forEach(session => {
-            const time = session['وقت الموعد'] + session['ص- م'];
+            const time = (session['وقت الموعد'] || '') + (session['ص- م'] || '');
             if (!timeMap.has(time)) timeMap.set(time, []);
             timeMap.get(time)!.push(session);
         });
@@ -36,14 +36,12 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({ selectedDate, sessions,
         return conflictIds;
     }, [sessions]);
 
-    // الجلسات التي تمر من خلال فلتر "التعارضات فقط"
     const conflictFilteredSessions = useMemo(() => {
         return showOnlyConflicts 
             ? sessions.filter(s => conflictingSessionIds.has(s.id))
             : sessions;
     }, [sessions, showOnlyConflicts, conflictingSessionIds]);
 
-    // استخراج الدوائر بناءً على الجلسات المتاحة في الوضع الحالي (تعارض أو كل)
     const availableCircuits = useMemo(() => {
         const circuits = new Map<string, number>();
         conflictFilteredSessions.forEach(s => {
@@ -55,107 +53,81 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({ selectedDate, sessions,
 
     const sessionsToDisplay = useMemo(() => {
         if (!selectedCircuit) return conflictFilteredSessions;
-        return conflictFilteredSessions.filter(s => {
-            const name = (s['الدائرة'] || '').trim() || 'غير محدد';
-            return name === selectedCircuit;
-        });
+        return conflictFilteredSessions.filter(s => (s['الدائرة'] || '').trim() === selectedCircuit);
     }, [conflictFilteredSessions, selectedCircuit]);
 
     if (!selectedDate) {
         return (
-            <div className="bg-white p-6 rounded-lg shadow-md h-full flex flex-col items-center justify-center text-center">
-                <ClockIcon className="w-16 h-16 text-border" />
-                <h3 className="text-xl font-bold mt-4 text-dark">اختر يوماً من القائمة</h3>
-                <p className="text-text opacity-75 mt-2">لعرض تفاصيل الجلسات والدوائر المتاحة.</p>
+            <div className="flex-1 w-full h-full flex flex-col items-center justify-center text-center animate-in fade-in duration-1000">
+                <div className="w-32 h-32 bg-[#f9f8f6] rounded-full flex items-center justify-center mb-10 shadow-inner">
+                    <ClockIcon className="w-16 h-16 text-[#e2dfd9]" />
+                </div>
+                <h3 className="text-4xl font-black text-[#4a4130] mb-5 tracking-tight">اختر يوماً من القائمة</h3>
+                <p className="text-[#6b5f4c] opacity-50 max-w-sm mx-auto leading-relaxed text-lg">لعرض تفاصيل الجلسات والدوائر المتاحة للموعد المختار في الجدول الزمني.</p>
             </div>
         );
     }
 
     return (
-        <div className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-300">
-            <div className="bg-white p-4 md:p-6 rounded-xl shadow-md border-r-4 border-primary min-h-[400px]">
-                 <div className="flex flex-col gap-4 mb-6">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            {onBack && (
-                                <button onClick={onBack} className="lg:hidden p-2 rounded-full hover:bg-light transition-colors">
-                                    <ArrowRightIcon className="w-5 h-5 text-text" />
-                                </button>
-                            )}
-                            <h3 className="text-xl font-bold text-dark">{selectedDate}</h3>
-                            {showOnlyConflicts && (
-                                <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center">
-                                    <WarningIcon className="w-3 h-3 ml-1" />
-                                    تعارضات فقط
-                                </span>
-                            )}
-                        </div>
-                        <span className="text-xs font-bold text-text opacity-60">
-                            {sessionsToDisplay.length} من أصل {conflictFilteredSessions.length} جلسة
-                        </span>
+        <div className="flex-1 w-full animate-in fade-in slide-in-from-bottom-3 duration-500 overflow-hidden flex flex-col">
+            <div className="flex flex-col gap-8 mb-10 w-full">
+                <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-4">
+                        {onBack && (
+                            <button onClick={onBack} className="lg:hidden p-3 rounded-full hover:bg-[#f7f5f2] transition-colors border border-border">
+                                <ArrowRightIcon className="w-6 h-6 text-[#6b5f4c]" />
+                            </button>
+                        )}
+                        <h3 className="text-4xl font-black text-[#4a4130] tracking-tight">{selectedDate}</h3>
+                        {showOnlyConflicts && (
+                            <span className="bg-[#fef7ec] text-[#b45d0b] text-sm font-bold px-4 py-1.5 rounded-full border border-[#fbd38d] flex items-center gap-2">
+                                <WarningIcon className="w-4 h-4" />
+                                تعارضات فقط
+                            </span>
+                        )}
                     </div>
-                    
-                    {/* طبقة الفرز الثانية: الدوائر المتاحة فقط في الوضع الحالي */}
-                    {availableCircuits.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-2 p-1 bg-light/30 rounded-lg">
+                </div>
+                
+                {availableCircuits.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-3 p-2.5 bg-[#f7f5f2] rounded-[1.5rem] w-fit shadow-inner">
+                        <button
+                            onClick={() => setSelectedCircuit(null)}
+                            className={`px-6 py-2.5 text-sm font-bold rounded-[1rem] transition-all ${
+                                selectedCircuit === null 
+                                ? 'bg-[#8c7851] text-white shadow-lg' 
+                                : 'text-[#6b5f4c] hover:bg-white hover:shadow-sm'
+                            }`}
+                        >
+                            الكل ({conflictFilteredSessions.length})
+                        </button>
+                        {availableCircuits.map(([name, count]) => (
                             <button
-                                onClick={() => setSelectedCircuit(null)}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all border ${
-                                    selectedCircuit === null 
-                                    ? 'bg-primary text-white border-primary shadow-sm' 
-                                    : 'bg-white text-text border-border hover:border-primary/50'
+                                key={name}
+                                onClick={() => setSelectedCircuit(name)}
+                                className={`px-6 py-2.5 text-sm font-bold rounded-[1rem] transition-all ${
+                                    selectedCircuit === name 
+                                    ? 'bg-[#8c7851] text-white shadow-lg' 
+                                    : 'text-[#6b5f4c] hover:bg-white hover:shadow-sm'
                                 }`}
                             >
-                                الكل ({conflictFilteredSessions.length})
+                                {name} ({count})
                             </button>
-                            {availableCircuits.map(([name, count]) => (
-                                <button
-                                    key={name}
-                                    onClick={() => setSelectedCircuit(name)}
-                                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all border ${
-                                        selectedCircuit === name 
-                                        ? 'bg-primary text-white border-primary shadow-sm' 
-                                        : 'bg-white text-text border-border hover:border-primary/50'
-                                    }`}
-                                >
-                                    {name} ({count})
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                        ))}
+                    </div>
+                )}
+            </div>
 
+            <div className="flex-1 overflow-x-auto custom-scrollbar">
                 {sessionsToDisplay.length > 0 ? (
-                    <>
-                        {conflictingSessionIds.size > 0 && !showOnlyConflicts && (
-                             <div className="flex items-center p-3 mb-4 text-xs text-amber-800 rounded-lg bg-amber-50 border border-amber-100">
-                                <WarningIcon className="w-4 h-4 ml-2 flex-shrink-0" />
-                                <p>توجد تعارضات زمنية في هذا اليوم، تم تمييزها باللون الأصفر في الجدول.</p>
-                            </div>
-                        )}
-                        <SessionTable 
-                            sessions={sessionsToDisplay} 
-                            onUpdateClick={onUpdateClick} 
-                            conflictingSessionIds={conflictingSessionIds}
-                        />
-                    </>
+                    <SessionTable 
+                        sessions={sessionsToDisplay} 
+                        onUpdateClick={onUpdateClick} 
+                        conflictingSessionIds={conflictingSessionIds}
+                    />
                 ) : (
-                    <div className="flex flex-col items-center justify-center py-16 text-center bg-light/30 rounded-xl border-2 border-dashed border-border">
-                        <div className="bg-white p-4 rounded-full shadow-sm mb-4">
-                            <WarningIcon className="w-8 h-8 text-amber-400" />
-                        </div>
-                        <h4 className="text-lg font-bold text-dark">لا توجد نتائج مطابقة</h4>
-                        <p className="text-sm text-text max-w-xs mx-auto mt-2">
-                            {showOnlyConflicts 
-                                ? "لا توجد جلسات متعارضة في هذه الدائرة لهذا اليوم." 
-                                : "لا توجد جلسات مسجلة لهذه الدائرة في هذا اليوم."}
-                        </p>
-                        <button 
-                            onClick={() => {setSelectedCircuit(null)}}
-                            className="mt-6 text-sm font-bold text-primary hover:underline"
-                        >
-                            عرض جميع جلسات اليوم
-                        </button>
+                    <div className="py-24 text-center opacity-40">
+                        <WarningIcon className="w-20 h-20 mx-auto mb-6" />
+                        <p className="font-bold text-2xl">لا توجد بيانات متاحة لهذا اليوم</p>
                     </div>
                 )}
             </div>

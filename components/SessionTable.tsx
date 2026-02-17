@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import type { CaseSession } from '../types';
 import { EditIcon } from './icons';
@@ -60,10 +61,10 @@ const SessionTable: React.FC<SessionTableProps> = ({ sessions, onUpdateClick, sh
                         {showDateColumn && <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">التاريخ واليوم</th>}
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">التوقيت</th>
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">رقم الدعوى</th>
-                        <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider hidden sm:table-cell">المدعي</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider hidden sm:table-cell">رقم المخالفة</th>
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider hidden md:table-cell">المحكمة</th>
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">الدائرة</th>
-                        <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider hidden md:table-cell">التكليف</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider hidden lg:table-cell">التكليف</th>
                         <th scope="col" className="relative px-4 py-3 w-10">
                             <span className="sr-only">تعديل</span>
                         </th>
@@ -96,8 +97,8 @@ const SessionTable: React.FC<SessionTableProps> = ({ sessions, onUpdateClick, sh
                                             <span className="mr-1 text-[10px] text-text font-normal">{session['ص- م']}</span>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-text">{session['رقم الدعوى']}</td>
-                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-text hidden sm:table-cell max-w-[120px] truncate" title={session['المدعي']}>{session['المدعي']}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-text font-bold">{session['رقم الدعوى']}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-primary hidden sm:table-cell">{session['رقم المخالفة'] || '-'}</td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-text hidden md:table-cell max-w-[150px] truncate" title={session['المحكمة']}>{session['المحكمة']}</td>
                                     
                                     <td className="px-4 py-3 whitespace-nowrap text-sm">
@@ -108,7 +109,7 @@ const SessionTable: React.FC<SessionTableProps> = ({ sessions, onUpdateClick, sh
                                         )}
                                     </td>
 
-                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-text hidden md:table-cell">
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-text hidden lg:table-cell">
                                         <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${session['التكليف'] ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'}`}>
                                             {session['التكليف'] || 'لم يكلف'}
                                         </span>
@@ -128,16 +129,16 @@ const SessionTable: React.FC<SessionTableProps> = ({ sessions, onUpdateClick, sh
                                 </tr>
                                 {isExpanded && (
                                     <tr className={`md:hidden ${isConflict ? 'bg-amber-50' : 'bg-white'}`}>
-                                        <td colSpan={showDateColumn ? 5 : 4} className="p-0">
+                                        <td colSpan={showDateColumn ? 6 : 5} className="p-0">
                                             <div className="px-4 py-4 bg-light/80 border-r-4 border-primary m-2 rounded-lg shadow-inner">
                                                 <div className="grid grid-cols-2 gap-4 text-xs">
                                                     <div>
-                                                        <p className="font-bold text-text mb-1 text-[10px] opacity-60">المدعي</p>
-                                                        <p className="text-dark">{session['المدعي'] || 'غير مسجل'}</p>
+                                                        <p className="font-bold text-text mb-1 text-[10px] opacity-60 uppercase">رقم المخالفة</p>
+                                                        <p className="text-primary font-bold">{session['رقم المخالفة'] || 'لا يوجد'}</p>
                                                     </div>
                                                     <div>
-                                                        <p className="font-bold text-text mb-1 text-[10px] opacity-60">المدعي عليه</p>
-                                                        <p className="text-dark">{session['المدعي عليه'] || 'غير مسجل'}</p>
+                                                        <p className="font-bold text-text mb-1 text-[10px] opacity-60">المدعي</p>
+                                                        <p className="text-dark">{session['المدعي'] || 'غير مسجل'}</p>
                                                     </div>
                                                     <div className="col-span-2 pt-2 mt-2 border-t border-border/50">
                                                         <p className="font-bold text-text mb-1 text-[10px] opacity-60">المحكمة</p>

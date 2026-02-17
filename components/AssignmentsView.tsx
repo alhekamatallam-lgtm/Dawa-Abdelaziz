@@ -1,5 +1,4 @@
 
-
 import React, { useMemo, useState, useEffect } from 'react';
 import type { CaseSession } from '../types';
 import SessionTable from './SessionTable';
@@ -28,6 +27,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     const [selectedLawyer, setSelectedLawyer] = useState<string>('');
     const [selectedDate, setSelectedDate] = useState<string>('');
     const [selectedPlaintiff, setSelectedPlaintiff] = useState<string>('');
+    const [searchQuery, setSearchQuery] = useState<string>('');
 
     useEffect(() => {
         if (lawyerFilter) setSelectedLawyer(lawyerFilter);
@@ -61,7 +61,6 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
             return new Date(year, month - 1, day);
         };
 
-        // FIX: Explicitly type 'a' and 'b' as strings to resolve TypeScript inference error.
         return Array.from(uniqueDateSet).sort((a: string, b: string) => {
             return parseDate(a).getTime() - parseDate(b).getTime();
         });
@@ -105,17 +104,29 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         }
         
         let filtered = baseSessions;
+        
+        // تطبيق فلاتر القوائم المنسدلة
         if (selectedCircuit) filtered = filtered.filter(s => (s['الدائرة'] || '').trim() === selectedCircuit);
         if (selectedDate) filtered = filtered.filter(s => (s['التاريخ'] || '').trim() === selectedDate);
         if (selectedPlaintiff) filtered = filtered.filter(s => (s['المدعي'] || '').trim() === selectedPlaintiff);
         if (selectedLawyer) filtered = filtered.filter(s => (s['التكليف'] || '').trim() === selectedLawyer);
+        
+        // تطبيق البحث النصي (رقم الدعوى أو رقم المخالفة)
+        if (searchQuery.trim()) {
+            const query = searchQuery.trim().toLowerCase();
+            filtered = filtered.filter(s => {
+                const caseNum = String(s['رقم الدعوى'] || '').toLowerCase();
+                const violationNum = String(s['رقم المخالفة'] || '').toLowerCase();
+                return caseNum.includes(query) || violationNum.includes(query);
+            });
+        }
         
         if (showOnlyConflicts) {
             filtered = filtered.filter(s => entitySpecificConflictIds.has(s.id));
         }
         
         return filtered;
-    }, [sessions, selectedCircuit, selectedDate, selectedPlaintiff, selectedLawyer, lawyerFilter, plaintiffFilter, showOnlyConflicts, entitySpecificConflictIds]);
+    }, [sessions, selectedCircuit, selectedDate, selectedPlaintiff, selectedLawyer, searchQuery, lawyerFilter, plaintiffFilter, showOnlyConflicts, entitySpecificConflictIds]);
     
     const dynamicContent = useMemo(() => {
         if (plaintiffFilter) {
@@ -141,6 +152,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         setSelectedLawyer('');
         setSelectedDate('');
         setSelectedPlaintiff('');
+        setSearchQuery('');
         if (onClearFilter) onClearFilter();
     };
 
@@ -158,6 +170,23 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                 </div>
                 
                 <div className="flex flex-wrap items-end gap-3">
+                    {/* البحث برقم الدعوى أو المخالفة */}
+                    <div className="flex flex-col min-w-[200px] relative">
+                        <label className="text-[10px] font-bold text-text mb-1 mr-1">بحث برقم الدعوى / المخالفة</label>
+                        <div className="relative">
+                            <input 
+                                type="text"
+                                placeholder="ادخل الرقم هنا..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full bg-light border border-border rounded-lg pl-3 pr-10 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                            />
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-primary opacity-50">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                            </svg>
+                        </div>
+                    </div>
+
                     <div className="flex flex-col min-w-[140px]">
                         <label className="text-[10px] font-bold text-text mb-1 mr-1">حسب التاريخ</label>
                         <select 
@@ -175,14 +204,6 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                         <select value={selectedCircuit} onChange={(e) => setSelectedCircuit(e.target.value)} className="bg-light border border-border rounded-lg px-3 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer">
                             <option value="">جميع الدوائر</option>
                             {uniqueCircuits.map(circuit => (<option key={circuit} value={circuit}>{circuit}</option>))}
-                        </select>
-                    </div>
-
-                    <div className="flex flex-col min-w-[140px]">
-                        <label className="text-[10px] font-bold text-text mb-1 mr-1">حسب المدعي</label>
-                        <select value={selectedPlaintiff} onChange={(e) => setSelectedPlaintiff(e.target.value)} disabled={!!plaintiffFilter} className="bg-light border border-border rounded-lg px-3 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer disabled:opacity-50 disabled:bg-border">
-                            <option value="">كل المدعين</option>
-                            {uniquePlaintiffs.map(plaintiff => (<option key={plaintiff} value={plaintiff}>{plaintiff}</option>))}
                         </select>
                     </div>
 
@@ -230,12 +251,12 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                             </svg>
                         </div>
                         <h3 className="text-lg font-bold text-dark">لا توجد نتائج</h3>
-                        <p className="text-sm text-text mt-1 max-w-xs mx-auto">لم نعثر على أي جلسات تطابق الفلاتر المختارة حالياً.</p>
+                        <p className="text-sm text-text mt-1 max-w-xs mx-auto">لم نعثر على أي جلسات تطابق الفلاتر أو البحث الحالي.</p>
                         <button 
                             onClick={handleResetFilters}
                             className="mt-6 px-6 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-dark transition-all shadow-md shadow-primary/20"
                         >
-                            إلغاء الفلاتر
+                            إلغاء البحث والفلترة
                         </button>
                     </div>
                 )}

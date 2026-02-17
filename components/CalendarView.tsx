@@ -1,4 +1,6 @@
-import React, { useMemo } from 'react';
+
+import React, { useMemo, useState } from 'react';
+import type { CaseSession } from '../types';
 import { CalendarIcon, WarningIcon, BriefcaseIcon, ClipboardDocumentListIcon, CalendarForwardIcon } from './icons';
 
 interface CalendarDay {
@@ -6,6 +8,7 @@ interface CalendarDay {
     total: number;
     conflicts: number;
     lawyersCount: number;
+    sessions: CaseSession[];
 }
 
 interface CalendarViewProps {
@@ -25,174 +28,165 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     selectedDate, 
     onShowAllConflictsToggle, 
     isShowingAllConflicts, 
-    showOnlyConflictsInDetails,
     showOnlyUpcomingDays,
     onShowOnlyUpcomingDaysToggle
 }) => {
+    const [searchQuery, setSearchQuery] = useState('');
+
     const sortedData = [...calendarData].sort((a, b) => {
-        const partsA = (a.date || '').split('-').map(Number);
-        const partsB = (b.date || '').split('-').map(Number);
-
-        const isAValid = partsA.length === 3 && !partsA.some(isNaN);
-        const isBValid = partsB.length === 3 && !partsB.some(isNaN);
-
-        if (isAValid && !isBValid) return -1;
-        if (!isAValid && isBValid) return 1;
-        if (!isAValid && !isBValid) return 0;
-
-        const [dayA, monthA, yearA] = partsA;
-        const [dayB, monthB, yearB] = partsB;
-
-        if (yearA !== yearB) return yearA - yearB;
-        if (monthA !== monthB) return monthA - monthB;
-        return dayA - dayB;
+        const parse = (d: string) => {
+            const parts = d.split('-');
+            if (parts.length !== 3) return 0;
+            return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0])).getTime();
+        };
+        return parse(a.date) - parse(b.date);
     });
 
-    const upcomingFilteredData = useMemo(() => {
-        if (!showOnlyUpcomingDays) {
-            return sortedData;
+    const filteredData = useMemo(() => {
+        let data = sortedData;
+
+        // 1. فلترة الأيام المقبلة
+        if (showOnlyUpcomingDays) {
+            const formatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-nu-latn', {
+                year: 'numeric', month: 'numeric', day: 'numeric'
+            });
+            const parts = formatter.formatToParts(new Date());
+            const todayHijri = {
+                y: parseInt(parts.find(p => p.type === 'year')?.value || '0', 10),
+                m: parseInt(parts.find(p => p.type === 'month')?.value || '0', 10),
+                d: parseInt(parts.find(p => p.type === 'day')?.value || '0', 10),
+            };
+            
+            data = data.filter(day => {
+                const p = day.date.split('-');
+                if(p.length !== 3) return true;
+                const [d, m, y] = p.map(Number);
+                if (y > todayHijri.y) return true;
+                if (y < todayHijri.y) return false;
+                if (m > todayHijri.m) return true;
+                if (m < todayHijri.m) return false;
+                return d >= todayHijri.d;
+            });
         }
 
-        // Get today's date in Hijri calendar with Latin numerals
-        const formatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-nu-latn', {
-            year: 'numeric',
-            month: 'numeric',
-            day: 'numeric'
-        });
-        const parts = formatter.formatToParts(new Date());
+        // 2. فلترة التعارضات فقط
+        if (isShowingAllConflicts) {
+            data = data.filter(day => day.conflicts > 0);
+        }
 
-        const todayHijri = {
-            year: parseInt(parts.find(p => p.type === 'year')?.value || '0', 10),
-            month: parseInt(parts.find(p => p.type === 'month')?.value || '0', 10),
-            day: parseInt(parts.find(p => p.type === 'day')?.value || '0', 10),
-        };
-        
-        const parseHijriDate = (dateStr: string) => {
-            const [day, month, year] = dateStr.split('-').map(Number);
-            return { day, month, year };
-        };
+        // 3. البحث برقم الدعوى أو رقم المخالفة
+        if (searchQuery.trim()) {
+            const query = searchQuery.trim().toLowerCase();
+            data = data.filter(day => {
+                return day.sessions.some(s => {
+                    const caseNum = String(s['رقم الدعوى'] || '').toLowerCase();
+                    const violationNum = String(s['رقم المخالفة'] || '').toLowerCase();
+                    return caseNum.includes(query) || violationNum.includes(query);
+                });
+            });
+        }
 
-        return sortedData.filter(day => {
-            const sessionDate = parseHijriDate(day.date);
-
-            // Compare dates component by component
-            if (sessionDate.year > todayHijri.year) return true;
-            if (sessionDate.year < todayHijri.year) return false;
-            // Same year, compare month
-            if (sessionDate.month > todayHijri.month) return true;
-            if (sessionDate.month < todayHijri.month) return false;
-            // Same month, compare day
-            return sessionDate.day >= todayHijri.day;
-        });
-    }, [sortedData, showOnlyUpcomingDays]);
-
-    const dataToDisplay = selectedDate && !isShowingAllConflicts
-        ? upcomingFilteredData.filter(day => day.date === selectedDate)
-        : upcomingFilteredData;
+        return data;
+    }, [sortedData, showOnlyUpcomingDays, isShowingAllConflicts, searchQuery]);
 
     return (
-        <div className="bg-white p-4 rounded-lg shadow-md h-full">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center">
-                    <CalendarIcon className="w-6 h-6 text-primary" />
-                    <h2 className="text-xl font-bold mr-2 text-dark">أيام الجلسات</h2>
+        <div className="bg-white p-6 rounded-[2.5rem] border border-border shadow-sm flex flex-col min-h-[650px]">
+            <div className="flex flex-col gap-5 mb-8 px-2">
+                <div className="flex items-center gap-3">
+                    <CalendarIcon className="w-6 h-6 text-[#8c7851]" />
+                    <h2 className="text-2xl font-black text-[#4a4130]">أيام الجلسات</h2>
                 </div>
-                 <div className="flex items-center gap-2">
+
+                {/* حقل البحث الجديد */}
+                <div className="relative">
+                    <input 
+                        type="text" 
+                        placeholder="بحث برقم الدعوى / المخالفة..." 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full bg-[#f7f5f2] border border-border rounded-2xl py-3 pr-10 pl-4 text-xs font-bold text-dark focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-text/40"
+                    />
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-primary opacity-50">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                    </svg>
+                </div>
+                
+                <div className="flex gap-2">
                     <button
                         onClick={onShowOnlyUpcomingDaysToggle}
-                        title={showOnlyUpcomingDays ? "عرض كل الأيام" : "عرض الأيام المقبلة فقط"}
-                        className={`flex items-center px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-bold transition-all shadow-sm ${
                             showOnlyUpcomingDays 
-                            ? 'bg-primary text-white shadow-md' 
-                            : 'bg-light text-text hover:bg-border'
+                            ? 'bg-[#8c7851] text-white' 
+                            : 'bg-[#f7f5f2] text-[#6b5f4c] hover:bg-border'
                         }`}
                     >
-                        <CalendarForwardIcon className="w-4 h-4 ml-1.5" />
-                        <span>{showOnlyUpcomingDays ? 'المقبلة' : 'الكل'}</span>
+                        <span>المقبلة</span>
+                        <CalendarForwardIcon className="w-4 h-4" />
                     </button>
                     <button 
                         onClick={onShowAllConflictsToggle}
-                        className={`flex items-center px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-bold transition-all shadow-sm border ${
                             isShowingAllConflicts 
-                            ? 'bg-amber-500 text-white shadow-lg' 
-                            : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                            ? 'bg-[#b45d0b] text-white border-transparent' 
+                            : 'bg-[#fff8ef] text-[#b45d0b] border-[#fae8d0] hover:bg-[#fae8d0]'
                         }`}
                     >
-                        <WarningIcon className="w-4 h-4 ml-1.5" />
-                        التعارضات
+                        <WarningIcon className="w-4 h-4" />
+                        <span>التعارضات</span>
                     </button>
                 </div>
             </div>
-            <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
-                {dataToDisplay.length > 0 ? (
-                    dataToDisplay.map(({ date, total, conflicts, lawyersCount }) => {
-                        const isSelected = date === selectedDate && !isShowingAllConflicts;
-                        const isAllSessionsSelected = isSelected && !showOnlyConflictsInDetails;
-                        const isConflictsSelected = isSelected && showOnlyConflictsInDetails;
 
+            <div className="space-y-4 overflow-y-auto pr-1 custom-scrollbar flex-1 pb-4">
+                {filteredData.length > 0 ? (
+                    filteredData.map(({ date, total, conflicts, lawyersCount }) => {
+                        const isSelected = date === selectedDate;
                         return (
                             <div
                                 key={date}
                                 onClick={() => onDateSelect(date, false)}
-                                className={`w-full p-3 rounded-xl transition-all duration-300 flex flex-col gap-2 cursor-pointer border-2 ${
-                                    isAllSessionsSelected 
-                                    ? 'bg-primary border-primary text-white shadow-md' 
-                                    : 'bg-light border-transparent hover:border-primary/30 text-dark'
+                                className={`relative p-5 rounded-[2rem] transition-all duration-300 cursor-pointer flex flex-col gap-3 border ${
+                                    isSelected 
+                                    ? 'bg-[#f9f8f6] border-[#8c7851] shadow-sm' 
+                                    : 'bg-[#fcfbf9] border-transparent hover:bg-white hover:border-border hover:shadow-md'
                                 }`}
                             >
                                 <div className="flex justify-between items-center">
-                                    <span className="font-bold text-base">{date}</span>
-                                    <div className="flex items-center gap-1.5">
-                                         <span className={`flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold ${
-                                            isAllSessionsSelected ? 'bg-white/20 text-white' : 'bg-white text-dark shadow-sm'
-                                        }`}>
-                                            <ClipboardDocumentListIcon className="w-3 h-3 ml-1 opacity-70" />
-                                            {total} جلسات
-                                        </span>
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-border shadow-xs text-[11px] font-bold text-dark/60">
+                                        <ClipboardDocumentListIcon className="w-4 h-4" />
+                                        <span>{total} جلسات</span>
                                     </div>
+                                    <span className="font-black text-xl text-[#4a4130]">{date}</span>
                                 </div>
 
-                                <div className="flex flex-wrap items-center gap-2">
+                                <div className="flex items-center justify-end gap-3 mt-1">
                                     {conflicts > 0 && (
-                                        <button 
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onDateSelect(date, true);
-                                            }}
-                                            className={`flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold transition-transform hover:scale-105 ${
-                                                isConflictsSelected 
-                                                ? 'bg-amber-400 text-amber-900 shadow-inner' 
-                                                : isAllSessionsSelected ? 'bg-amber-300/30 text-white' : 'bg-amber-100 text-amber-700'
-                                            }`}
-                                        >
+                                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#fef7ec] text-[#b45d0b] text-[10px] font-bold border border-[#fbd38d] animate-pulse">
                                             <WarningIcon className="w-3 h-3 ml-1" />
-                                            {conflicts} تعارض
-                                        </button>
+                                            <span>{conflicts} تعارض</span>
+                                        </div>
                                     )}
-                                    
-                                    {lawyersCount > 0 && (
-                                        <span className={`flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                            isAllSessionsSelected ? 'bg-blue-400/30 text-white' : 'bg-blue-50 text-blue-700'
-                                        }`}>
-                                            <BriefcaseIcon className="w-3 h-3 ml-1" />
-                                            {lawyersCount} محامي
-                                        </span>
-                                    )}
+                                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#8c7851]">
+                                        <BriefcaseIcon className="w-4 h-4 opacity-70 ml-1" />
+                                        <span>{lawyersCount} مكلف</span>
+                                    </div>
                                 </div>
+                                
+                                {isSelected && (
+                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-12 bg-[#8c7851] rounded-l-full"></div>
+                                )}
                             </div>
                         );
                     })
                 ) : (
-                     <div className="flex flex-col items-center justify-center text-center py-16 px-4 h-full">
-                        <CalendarIcon className="w-16 h-16 text-border" />
-                        <h4 className="mt-4 font-bold text-dark">
-                            {showOnlyUpcomingDays ? "لا توجد جلسات مقبلة" : "لا توجد جلسات لعرضها"}
-                        </h4>
-                        <p className="mt-2 text-sm text-text max-w-xs">
-                            {showOnlyUpcomingDays
-                                ? "جميع الجلسات المسجلة في تواريخ سابقة. يمكنك عرضها بالضغط على زر 'الكل'."
-                                : "لا توجد أي جلسات مسجلة في النظام حالياً."}
-                        </p>
+                    <div className="flex flex-col items-center justify-center py-24 opacity-20 text-center px-4">
+                        <div className="p-4 bg-light rounded-full mb-4">
+                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12 text-border">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                            </svg>
+                        </div>
+                        <p className="font-bold text-lg text-dark/40">لم نجد أي جلسات تطابق بحثك</p>
+                        <button onClick={() => setSearchQuery('')} className="mt-4 text-xs font-bold text-primary hover:underline">إلغاء البحث</button>
                     </div>
                 )}
             </div>
