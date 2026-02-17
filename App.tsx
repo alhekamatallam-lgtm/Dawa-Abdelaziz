@@ -6,6 +6,7 @@ import CalendarView from './components/CalendarView';
 import SessionDetails from './components/SessionDetails';
 import { ErrorIcon, CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon, BriefcaseIcon, UserGroupIcon } from './components/icons';
 import UpdateModal from './components/UpdateModal';
+import ViewModal from './components/ViewModal';
 import Dashboard from './components/Dashboard';
 import AssignmentsView from './components/AssignmentsView';
 import LawyerReport from './components/LawyerReport';
@@ -24,7 +25,9 @@ const App: React.FC = () => {
     const [view, setView] = useState<'calendar' | 'dashboard' | 'assignments' | 'lawyer_report' | 'plaintiff_report'>('calendar');
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+    const [isViewModalOpen, setIsViewModalOpen] = useState<boolean>(false);
     const [sessionToUpdate, setSessionToUpdate] = useState<CaseSession | null>(null);
+    const [sessionToView, setSessionToView] = useState<CaseSession | null>(null);
 
     const [showOnlyUpcomingDays, setShowOnlyUpcomingDays] = useState<boolean>(true);
     const [showOnlyConflictsInSidebar, setShowOnlyConflictsInSidebar] = useState<boolean>(false);
@@ -117,7 +120,7 @@ const App: React.FC = () => {
                 self.some((other, oIdx) => idx !== oIdx && s['وقت الموعد'] === other['وقت الموعد'] && s['ص- م'] === other['ص- م'])
             ).length,
             lawyersCount: new Set(sessions.map(s => s['التكليف']).filter(Boolean)).size,
-            sessions // تمرير الجلسات لدعم البحث الداخلي
+            sessions 
         }));
     }, [sessionsByDate]);
 
@@ -201,6 +204,7 @@ const App: React.FC = () => {
                                 selectedDate={selectedDate} 
                                 sessions={selectedDate ? sessionsByDate[selectedDate] : []} 
                                 onUpdateClick={(s) => { setSessionToUpdate(s); setIsModalOpen(true); }}
+                                onViewClick={(s) => { setSessionToView(s); setIsViewModalOpen(true); }}
                                 showOnlyConflicts={false}
                                 onBack={() => setSelectedDate(null)}
                             />
@@ -209,7 +213,14 @@ const App: React.FC = () => {
                 ) : (
                     <div className="w-full bg-white rounded-[2.5rem] border border-border flex flex-col p-10 shadow-sm overflow-hidden animate-in fade-in duration-500">
                         {view === 'dashboard' && <Dashboard sessions={allSessions} />}
-                        {view === 'assignments' && <AssignmentsView sessions={filteredSessions} onUpdateClick={(s) => { setSessionToUpdate(s); setIsModalOpen(true); }} conflictingSessionIds={new Set()} />}
+                        {view === 'assignments' && (
+                            <AssignmentsView 
+                                sessions={filteredSessions} 
+                                onUpdateClick={(s) => { setSessionToUpdate(s); setIsModalOpen(true); }} 
+                                onViewClick={(s) => { setSessionToView(s); setIsViewModalOpen(true); }}
+                                conflictingSessionIds={new Set()} 
+                            />
+                        )}
                         {view === 'lawyer_report' && <LawyerReport sessions={allSessions} onLawyerClick={() => setView('assignments')} />}
                         {view === 'plaintiff_report' && <PlaintiffReport sessions={allSessions} onPlaintiffClick={() => setView('assignments')} />}
                     </div>
@@ -225,6 +236,13 @@ const App: React.FC = () => {
                         setAllSessions(prev => prev.map(s => s.id === sessionToUpdate.id ? { ...s, ...upd } : s));
                         setIsModalOpen(false);
                     }} 
+                />
+            )}
+
+            {isViewModalOpen && sessionToView && (
+                <ViewModal 
+                    session={sessionToView} 
+                    onClose={() => setIsViewModalOpen(false)} 
                 />
             )}
             <BottomNavBar view={view} setView={setView} role={currentUser.role} />

@@ -7,6 +7,7 @@ import { ClipboardDocumentListIcon, ArrowRightIcon, WarningIcon } from './icons'
 interface AssignmentsViewProps {
     sessions: CaseSession[];
     onUpdateClick: (session: CaseSession) => void;
+    onViewClick: (session: CaseSession) => void;
     conflictingSessionIds: Set<number>;
     lawyerFilter?: string | null;
     plaintiffFilter?: string | null;
@@ -17,6 +18,7 @@ interface AssignmentsViewProps {
 const AssignmentsView: React.FC<AssignmentsViewProps> = ({ 
     sessions, 
     onUpdateClick, 
+    onViewClick,
     conflictingSessionIds, 
     lawyerFilter, 
     plaintiffFilter,
@@ -105,13 +107,11 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         
         let filtered = baseSessions;
         
-        // تطبيق فلاتر القوائم المنسدلة
         if (selectedCircuit) filtered = filtered.filter(s => (s['الدائرة'] || '').trim() === selectedCircuit);
         if (selectedDate) filtered = filtered.filter(s => (s['التاريخ'] || '').trim() === selectedDate);
         if (selectedPlaintiff) filtered = filtered.filter(s => (s['المدعي'] || '').trim() === selectedPlaintiff);
         if (selectedLawyer) filtered = filtered.filter(s => (s['التكليف'] || '').trim() === selectedLawyer);
         
-        // تطبيق البحث النصي (رقم الدعوى أو رقم المخالفة)
         if (searchQuery.trim()) {
             const query = searchQuery.trim().toLowerCase();
             filtered = filtered.filter(s => {
@@ -170,7 +170,6 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                 </div>
                 
                 <div className="flex flex-wrap items-end gap-3">
-                    {/* البحث برقم الدعوى أو المخالفة */}
                     <div className="flex flex-col min-w-[200px] relative">
                         <label className="text-[10px] font-bold text-text mb-1 mr-1">بحث برقم الدعوى / المخالفة</label>
                         <div className="relative">
@@ -239,6 +238,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                 <SessionTable 
                     sessions={filteredSessions} 
                     onUpdateClick={onUpdateClick} 
+                    onViewClick={onViewClick}
                     showDateColumn={true}
                     conflictingSessionIds={entitySpecificConflictIds}
                 />

@@ -1,16 +1,23 @@
 
 import React, { useState } from 'react';
 import type { CaseSession } from '../types';
-import { EditIcon } from './icons';
+import { EditIcon, ViewIcon } from './icons';
 
 interface SessionTableProps {
     sessions: CaseSession[];
     onUpdateClick: (session: CaseSession) => void;
+    onViewClick?: (session: CaseSession) => void;
     showDateColumn?: boolean;
     conflictingSessionIds?: Set<number>;
 }
 
-const SessionTable: React.FC<SessionTableProps> = ({ sessions, onUpdateClick, showDateColumn = false, conflictingSessionIds }) => {
+const SessionTable: React.FC<SessionTableProps> = ({ 
+    sessions, 
+    onUpdateClick, 
+    onViewClick,
+    showDateColumn = false, 
+    conflictingSessionIds 
+}) => {
     const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
 
     const handleRowToggle = (id: number) => {
@@ -55,7 +62,7 @@ const SessionTable: React.FC<SessionTableProps> = ({ sessions, onUpdateClick, sh
 
     return (
         <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="min-w-full divide-y divide-border">
+            <table className="min-w-full divide-y divide-border text-right">
                 <thead className="bg-light/50">
                     <tr>
                         {showDateColumn && <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">التاريخ واليوم</th>}
@@ -65,8 +72,8 @@ const SessionTable: React.FC<SessionTableProps> = ({ sessions, onUpdateClick, sh
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider hidden md:table-cell">المحكمة</th>
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">الدائرة</th>
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider hidden lg:table-cell">التكليف</th>
-                        <th scope="col" className="relative px-4 py-3 w-10">
-                            <span className="sr-only">تعديل</span>
+                        <th scope="col" className="relative px-4 py-3 w-24">
+                            <span className="sr-only">وظائف</span>
                         </th>
                     </tr>
                 </thead>
@@ -116,20 +123,35 @@ const SessionTable: React.FC<SessionTableProps> = ({ sessions, onUpdateClick, sh
                                     </td>
 
                                     <td className="px-4 py-3 whitespace-nowrap text-right">
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onUpdateClick(session);
-                                            }}
-                                            className="p-1.5 text-primary hover:text-dark hover:bg-border rounded-lg transition-colors border border-transparent hover:border-border"
-                                        >
-                                            <EditIcon className="w-5 h-5" />
-                                        </button>
+                                        <div className="flex items-center gap-1 justify-end">
+                                            {onViewClick && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onViewClick(session);
+                                                    }}
+                                                    className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                                                    title="عرض كامل البيانات"
+                                                >
+                                                    <ViewIcon className="w-5 h-5" />
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onUpdateClick(session);
+                                                }}
+                                                className="p-1.5 text-[#4a4130] hover:text-dark hover:bg-border rounded-lg transition-colors border border-transparent hover:border-border"
+                                                title="تعديل الجلسة"
+                                            >
+                                                <EditIcon className="w-5 h-5" />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                                 {isExpanded && (
                                     <tr className={`md:hidden ${isConflict ? 'bg-amber-50' : 'bg-white'}`}>
-                                        <td colSpan={showDateColumn ? 6 : 5} className="p-0">
+                                        <td colSpan={showDateColumn ? 7 : 6} className="p-0">
                                             <div className="px-4 py-4 bg-light/80 border-r-4 border-primary m-2 rounded-lg shadow-inner">
                                                 <div className="grid grid-cols-2 gap-4 text-xs">
                                                     <div>

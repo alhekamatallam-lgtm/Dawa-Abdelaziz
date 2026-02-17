@@ -2,21 +2,32 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import type { CaseSession } from '../types';
 import SessionTable from './SessionTable';
-import { ClockIcon, WarningIcon, ArrowRightIcon } from './icons';
+import { ClockIcon, WarningIcon, ArrowRightIcon, UserGroupIcon, ClipboardDocumentListIcon } from './icons';
 
 interface SessionDetailsProps {
     selectedDate: string | null;
     sessions: CaseSession[];
     onUpdateClick: (session: CaseSession) => void;
+    onViewClick: (session: CaseSession) => void;
     showOnlyConflicts: boolean;
     onBack?: () => void;
 }
 
-const SessionDetails: React.FC<SessionDetailsProps> = ({ selectedDate, sessions, onUpdateClick, showOnlyConflicts, onBack }) => {
+const SessionDetails: React.FC<SessionDetailsProps> = ({ 
+    selectedDate, 
+    sessions, 
+    onUpdateClick, 
+    onViewClick,
+    showOnlyConflicts, 
+    onBack 
+}) => {
     const [selectedCircuit, setSelectedCircuit] = useState<string | null>(null);
+    const [selectedPlaintiff, setSelectedPlaintiff] = useState<string | null>(null);
 
+    // إعادة ضبط الفلاتر عند تغيير التاريخ
     useEffect(() => {
         setSelectedCircuit(null);
+        setSelectedPlaintiff(null);
     }, [selectedDate, showOnlyConflicts]);
 
     const conflictingSessionIds = useMemo(() => {
@@ -51,10 +62,30 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({ selectedDate, sessions,
         return Array.from(circuits.entries()).sort((a, b) => b[1] - a[1]);
     }, [conflictFilteredSessions]);
 
+    const availablePlaintiffs = useMemo(() => {
+        const plaintiffs = new Map<string, number>();
+        conflictFilteredSessions.forEach(s => {
+            const name = (s['المدعي'] || '').trim() || 'غير محدد';
+            plaintiffs.set(name, (plaintiffs.get(name) || 0) + 1);
+        });
+        return Array.from(plaintiffs.entries()).sort((a, b) => b[1] - a[1]);
+    }, [conflictFilteredSessions]);
+
     const sessionsToDisplay = useMemo(() => {
-        if (!selectedCircuit) return conflictFilteredSessions;
-        return conflictFilteredSessions.filter(s => (s['الدائرة'] || '').trim() === selectedCircuit);
-    }, [conflictFilteredSessions, selectedCircuit]);
+        let filtered = conflictFilteredSessions;
+        if (selectedCircuit) {
+            filtered = filtered.filter(s => ((s['الدائرة'] || '').trim() || 'غير محدد') === selectedCircuit);
+        }
+        if (selectedPlaintiff) {
+            filtered = filtered.filter(s => ((s['المدعي'] || '').trim() || 'غير محدد') === selectedPlaintiff);
+        }
+        return filtered;
+    }, [conflictFilteredSessions, selectedCircuit, selectedPlaintiff]);
+
+    const handleResetFilters = () => {
+        setSelectedCircuit(null);
+        setSelectedPlaintiff(null);
+    };
 
     if (!selectedDate) {
         return (
@@ -70,9 +101,10 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({ selectedDate, sessions,
 
     return (
         <div className="flex-1 w-full animate-in fade-in slide-in-from-bottom-3 duration-500 overflow-hidden flex flex-col">
-            <div className="flex flex-col gap-8 mb-10 w-full">
+            {/* Header Section */}
+            <div className="flex flex-col gap-6 mb-8 w-full">
                 <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 text-right">
                         {onBack && (
                             <button onClick={onBack} className="lg:hidden p-3 rounded-full hover:bg-[#f7f5f2] transition-colors border border-border">
                                 <ArrowRightIcon className="w-6 h-6 text-[#6b5f4c]" />
@@ -88,48 +120,98 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({ selectedDate, sessions,
                     </div>
                 </div>
                 
-                {availableCircuits.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-3 p-2.5 bg-[#f7f5f2] rounded-[1.5rem] w-fit shadow-inner">
+                {/* Advanced Filtering Area */}
+                <div className="bg-[#fcfbf9] border border-border rounded-[2.5rem] p-6 space-y-6 shadow-sm">
+                    {/* Main Actions Row */}
+                    <div className="flex items-center justify-between border-b border-border pb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-primary/10 rounded-lg">
+                                <ClipboardDocumentListIcon className="w-5 h-5 text-primary" />
+                            </div>
+                            <h4 className="text-sm font-black text-dark">تصفية الجلسات</h4>
+                        </div>
                         <button
-                            onClick={() => setSelectedCircuit(null)}
-                            className={`px-6 py-2.5 text-sm font-bold rounded-[1rem] transition-all ${
-                                selectedCircuit === null 
-                                ? 'bg-[#8c7851] text-white shadow-lg' 
-                                : 'text-[#6b5f4c] hover:bg-white hover:shadow-sm'
+                            onClick={handleResetFilters}
+                            className={`px-6 py-2 text-xs font-bold rounded-xl transition-all border ${
+                                !selectedCircuit && !selectedPlaintiff
+                                ? 'bg-primary text-white border-transparent shadow-md'
+                                : 'bg-white text-text border-border hover:bg-light'
                             }`}
                         >
-                            الكل ({conflictFilteredSessions.length})
+                            عرض الكل ({conflictFilteredSessions.length})
                         </button>
-                        {availableCircuits.map(([name, count]) => (
-                            <button
-                                key={name}
-                                onClick={() => setSelectedCircuit(name)}
-                                className={`px-6 py-2.5 text-sm font-bold rounded-[1rem] transition-all ${
-                                    selectedCircuit === name 
-                                    ? 'bg-[#8c7851] text-white shadow-lg' 
-                                    : 'text-[#6b5f4c] hover:bg-white hover:shadow-sm'
-                                }`}
-                            >
-                                {name} ({count})
-                            </button>
-                        ))}
                     </div>
-                )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Circuits Filter Column */}
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black text-primary uppercase tracking-widest opacity-60 mr-2 flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 bg-primary rounded-full"></span>
+                                حسب الدوائر
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                                {availableCircuits.map(([name, count]) => (
+                                    <button
+                                        key={name}
+                                        onClick={() => {
+                                            setSelectedCircuit(selectedCircuit === name ? null : name);
+                                        }}
+                                        className={`px-4 py-2 text-[11px] font-bold rounded-xl transition-all border ${
+                                            selectedCircuit === name 
+                                            ? 'bg-primary text-white border-transparent shadow-sm' 
+                                            : 'bg-white text-dark/70 border-border hover:border-primary/30 hover:bg-light'
+                                        }`}
+                                    >
+                                        {name} <span className={`mr-1 opacity-50 ${selectedCircuit === name ? 'text-white' : ''}`}>({count})</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Plaintiffs Filter Column */}
+                        <div className="space-y-3 border-r border-border pr-6">
+                            <label className="text-[10px] font-black text-primary uppercase tracking-widest opacity-60 mr-2 flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 bg-primary rounded-full"></span>
+                                حسب المدعي
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                                {availablePlaintiffs.map(([name, count]) => (
+                                    <button
+                                        key={name}
+                                        onClick={() => {
+                                            setSelectedPlaintiff(selectedPlaintiff === name ? null : name);
+                                        }}
+                                        className={`px-4 py-2 text-[11px] font-bold rounded-xl transition-all border ${
+                                            selectedPlaintiff === name 
+                                            ? 'bg-dark text-white border-transparent shadow-sm' 
+                                            : 'bg-white text-dark/70 border-border hover:border-primary/30 hover:bg-light'
+                                        }`}
+                                    >
+                                        {name} <span className={`mr-1 opacity-50 ${selectedPlaintiff === name ? 'text-white' : ''}`}>({count})</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div className="flex-1 overflow-x-auto custom-scrollbar">
-                {sessionsToDisplay.length > 0 ? (
+            {/* Table Area */}
+            <div className="flex-1 overflow-hidden flex flex-col">
+                <div className="mb-2 flex items-center gap-2 px-2">
+                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                    <span className="text-[10px] font-bold text-text/50 italic">
+                        عرض {sessionsToDisplay.length} من {conflictFilteredSessions.length} جلسة
+                    </span>
+                </div>
+                <div className="flex-1 overflow-hidden">
                     <SessionTable 
                         sessions={sessionsToDisplay} 
-                        onUpdateClick={onUpdateClick} 
+                        onUpdateClick={onUpdateClick}
+                        onViewClick={onViewClick}
                         conflictingSessionIds={conflictingSessionIds}
                     />
-                ) : (
-                    <div className="py-24 text-center opacity-40">
-                        <WarningIcon className="w-20 h-20 mx-auto mb-6" />
-                        <p className="font-bold text-2xl">لا توجد بيانات متاحة لهذا اليوم</p>
-                    </div>
-                )}
+                </div>
             </div>
         </div>
     );
