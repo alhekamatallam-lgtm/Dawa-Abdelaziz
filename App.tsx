@@ -16,6 +16,17 @@ import LoadingScreen from './components/LoadingScreen';
 import LoginScreen from './components/LoginScreen';
 import Logo from './components/Logo';
 
+// FIX: Moved `normalizeArabicString` outside of the component.
+// It is a pure function and does not need to be redefined on every render. This also fixes a missing dependency issue in `filteredSessions`.
+const normalizeArabicString = (str: string): string => {
+    if (!str) return '';
+    return str
+        .replace(/أ|إ|آ/g, 'ا') // توحيد الألف
+        .replace(/ى/g, 'ي')    // توحيد الياء
+        .replace(/ة/g, 'ه')    // توحيد التاء المربوطة
+        .replace(/\s+/g, ''); // إزالة كافة المسافات
+};
+
 const App: React.FC = () => {
     const [allSessions, setAllSessions] = useState<CaseSession[]>([]);
     const [users, setUsers] = useState<User[]>([]);
@@ -32,6 +43,7 @@ const App: React.FC = () => {
     const [showOnlyUpcomingDays, setShowOnlyUpcomingDays] = useState<boolean>(true);
     const [showOnlyConflictsInSidebar, setShowOnlyConflictsInSidebar] = useState<boolean>(false);
 
+    // FIX: Added `setCurrentUser` and `setView` to the dependency array to satisfy exhaustive-deps rule.
     const handleLogin = useCallback((u: string, p: string, remember: boolean = false) => {
         const found = users.find(user => 
             String(user.user).toLowerCase() === u.trim().toLowerCase() && 
@@ -51,8 +63,9 @@ const App: React.FC = () => {
         } else { 
             if (!isLoading) alert('اسم المستخدم أو كلمة المرور غير صحيحة.'); 
         }
-    }, [users, isLoading]);
+    }, [users, isLoading, setCurrentUser, setView]);
 
+    // FIX: Added state setters to the dependency array to satisfy exhaustive-deps rule.
     const loadData = useCallback(async () => {
         setIsLoading(true);
         setError(null);
@@ -88,19 +101,38 @@ const App: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [setAllSessions, setUsers, setCurrentUser, setError, setIsLoading]);
 
     useEffect(() => { loadData(); }, [loadData]);
 
     const filteredSessions = useMemo(() => {
         if (!currentUser) return [];
-        if (currentUser.role === 'مشرف') return allSessions;
-        const userNameClean = (currentUser.name || '').trim();
-        return allSessions.filter(s => {
-            if (currentUser.role === 'محامي') return (s['التكليف'] || '').trim() === userNameClean;
-            if (currentUser.role === 'مدعي') return (s['المدعي'] || '').trim() === userNameClean;
-            return false;
-        });
+
+        if (currentUser.role === 'مشرف') {
+            return allSessions;
+        }
+        
+        if (currentUser.role === 'محامي') {
+            const lawyerName = normalizeArabicString((currentUser.name || '').trim());
+            if (!lawyerName) return [];
+            return allSessions.filter(s => normalizeArabicString((s['التكليف'] || '').trim()) === lawyerName);
+        }
+        
+        if (currentUser.role === 'مدعي') {
+            const userPlaintiffCodes = (currentUser.plaintiffCode || '').split(',')
+                .map(code => code.trim())
+                .filter(Boolean);
+                
+            if (userPlaintiffCodes.length === 0) return [];
+            const plaintiffCodeSet = new Set(userPlaintiffCodes);
+            
+            return allSessions.filter(s => {
+                const sessionPlaintiffCode = String(s['كود_المدعي'] || '').trim();
+                return sessionPlaintiffCode ? plaintiffCodeSet.has(sessionPlaintiffCode) : false;
+            });
+        }
+    
+        return [];
     }, [allSessions, currentUser]);
 
     const sessionsByDate = useMemo(() => {
@@ -148,6 +180,8 @@ const App: React.FC = () => {
         localStorage.removeItem('alsaad_pwd');
         setCurrentUser(null);
     };
+
+    const canEdit = currentUser?.role === 'مشرف' || currentUser?.role === 'محامي';
 
     return (
         <div className="bg-[#fdfcf9] min-h-screen text-text">
@@ -203,7 +237,7 @@ const App: React.FC = () => {
                             <SessionDetails 
                                 selectedDate={selectedDate} 
                                 sessions={selectedDate ? sessionsByDate[selectedDate] : []} 
-                                onUpdateClick={(s) => { setSessionToUpdate(s); setIsModalOpen(true); }}
+                                onUpdateClick={canEdit ? (s) => { setSessionToUpdate(s); setIsModalOpen(true); } : undefined}
                                 onViewClick={(s) => { setSessionToView(s); setIsViewModalOpen(true); }}
                                 showOnlyConflicts={false}
                                 onBack={() => setSelectedDate(null)}
@@ -216,13 +250,13 @@ const App: React.FC = () => {
                         {view === 'assignments' && (
                             <AssignmentsView 
                                 sessions={filteredSessions} 
-                                onUpdateClick={(s) => { setSessionToUpdate(s); setIsModalOpen(true); }} 
+                                onUpdateClick={canEdit ? (s) => { setSessionToUpdate(s); setIsModalOpen(true); } : undefined} 
                                 onViewClick={(s) => { setSessionToView(s); setIsViewModalOpen(true); }}
                                 conflictingSessionIds={new Set()} 
                             />
                         )}
-                        {view === 'lawyer_report' && <LawyerReport sessions={allSessions} onLawyerClick={() => setView('assignments')} />}
-                        {view === 'plaintiff_report' && <PlaintiffReport sessions={allSessions} onPlaintiffClick={() => setView('assignments')} />}
+                        {view === 'lawyer_report' && <LawyerReport sessions={filteredSessions} onLawyerClick={() => setView('assignments')} />}
+                        {view === 'plaintiff_report' && <PlaintiffReport sessions={filteredSessions} onPlaintiffClick={() => setView('assignments')} />}
                     </div>
                 )}
             </main>

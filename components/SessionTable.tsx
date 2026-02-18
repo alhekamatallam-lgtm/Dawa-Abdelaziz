@@ -5,7 +5,7 @@ import { EditIcon, ViewIcon } from './icons';
 
 interface SessionTableProps {
     sessions: CaseSession[];
-    onUpdateClick: (session: CaseSession) => void;
+    onUpdateClick?: (session: CaseSession) => void;
     onViewClick?: (session: CaseSession) => void;
     showDateColumn?: boolean;
     conflictingSessionIds?: Set<number>;
@@ -136,22 +136,24 @@ const SessionTable: React.FC<SessionTableProps> = ({
                                                     <ViewIcon className="w-5 h-5" />
                                                 </button>
                                             )}
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onUpdateClick(session);
-                                                }}
-                                                className="p-1.5 text-[#4a4130] hover:text-dark hover:bg-border rounded-lg transition-colors border border-transparent hover:border-border"
-                                                title="تعديل الجلسة"
-                                            >
-                                                <EditIcon className="w-5 h-5" />
-                                            </button>
+                                            {onUpdateClick && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onUpdateClick(session);
+                                                    }}
+                                                    className="p-1.5 text-[#4a4130] hover:text-dark hover:bg-border rounded-lg transition-colors border border-transparent hover:border-border"
+                                                    title="تعديل الجلسة"
+                                                >
+                                                    <EditIcon className="w-5 h-5" />
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
                                 {isExpanded && (
                                     <tr className={`md:hidden ${isConflict ? 'bg-amber-50' : 'bg-white'}`}>
-                                        <td colSpan={showDateColumn ? 7 : 6} className="p-0">
+                                        <td colSpan={showDateColumn ? 8 : 7} className="p-0">
                                             <div className="px-4 py-4 bg-light/80 border-r-4 border-primary m-2 rounded-lg shadow-inner">
                                                 <div className="grid grid-cols-2 gap-4 text-xs">
                                                     <div>

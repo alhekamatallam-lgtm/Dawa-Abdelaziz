@@ -6,7 +6,7 @@ import { ClipboardDocumentListIcon, ArrowRightIcon, WarningIcon } from './icons'
 
 interface AssignmentsViewProps {
     sessions: CaseSession[];
-    onUpdateClick: (session: CaseSession) => void;
+    onUpdateClick?: (session: CaseSession) => void;
     onViewClick: (session: CaseSession) => void;
     conflictingSessionIds: Set<number>;
     lawyerFilter?: string | null;

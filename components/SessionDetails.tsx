@@ -7,7 +7,7 @@ import { ClockIcon, WarningIcon, ArrowRightIcon, UserGroupIcon, ClipboardDocumen
 interface SessionDetailsProps {
     selectedDate: string | null;
     sessions: CaseSession[];
-    onUpdateClick: (session: CaseSession) => void;
+    onUpdateClick?: (session: CaseSession) => void;
     onViewClick: (session: CaseSession) => void;
     showOnlyConflicts: boolean;
     onBack?: () => void;

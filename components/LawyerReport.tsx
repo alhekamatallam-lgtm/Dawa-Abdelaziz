@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import type { CaseSession } from '../types';
 import { UserPlusIcon, WarningIcon, CalendarIcon, ClockIcon, BriefcaseIcon, ArrowRightIcon } from './icons';
@@ -126,7 +127,15 @@ const LawyerReport: React.FC<LawyerReportProps> = ({ sessions, onLawyerClick }) 
                                     onClick={() => lawyer.conflicts.count > 0 && onLawyerClick(lawyer.name, true)}
                                     className={`text-right p-3 rounded-xl transition-colors group/stat ${lawyer.conflicts.count > 0 ? 'bg-red-50 hover:bg-red-100 cursor-pointer' : 'bg-gray-50 opacity-50 cursor-default'}`}
                                 >
-                                    <p className="text-[10px] text-text uppercase font-bold opacity-60">التعارضات</p>
+                                    <p className="text-[10px] text-text uppercase font-bold opacity-60 flex items-center">
+                                        {lawyer.conflicts.count > 0 && (
+                                            <span className="relative flex h-2 w-2 ml-2">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                            </span>
+                                        )}
+                                        <span>التعارضات</span>
+                                    </p>
                                     <div className="flex items-center justify-between">
                                         <p className={`text-2xl font-black ${lawyer.conflicts.count > 0 ? 'text-red-600' : 'text-gray-400'}`}>
                                             {lawyer.conflicts.count}

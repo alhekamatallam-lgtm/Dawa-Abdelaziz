@@ -18,6 +18,7 @@ export interface CaseSession {
   "التاريخ": string;
   "التكليف": string;
   "المدعي": string;
+  "كود_المدعي"?: string | number;
   "المدعي عليه": string;
   "التاريخ الهجري"?: string;
   "التاريخ الميلادي"?: string;
@@ -33,6 +34,7 @@ export interface User {
   id: string;
   user: string;
   role: 'مشرف' | 'محامي' | 'مدعي';
-  name: string; // يطابق 'التكليف' للمحامي أو 'المدعي' للموكل
+  name: string; // يطابق 'التكليف' للمحامي
+  plaintiffCode: string; // يطابق 'كود_المدعي' للموكل
   pwd: string;
 }

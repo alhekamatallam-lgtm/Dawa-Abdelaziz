@@ -37,24 +37,32 @@ export const fetchInitialData = async (): Promise<{ sessions: CaseSession[], use
     
     // جلب الجلسات من data.dd
     const rawSessions = result.data.dd || [];
-    const sessions = rawSessions.map((item: any) => cleanObjectKeysAndValues(item));
+    const sessions = rawSessions.map((item: any) => {
+        const cleaned = cleanObjectKeysAndValues(item) as CaseSession;
+        // ضمان أن كود المدعي هو نص دائماً لتوحيد المقارنات
+        if (cleaned['كود_المدعي'] !== undefined && cleaned['كود_المدعي'] !== null) {
+            cleaned['كود_المدعي'] = String(cleaned['كود_المدعي']).trim();
+        }
+        return cleaned;
+    });
     console.log(`✅ تم جلب ${sessions.length} جلسة من [data.dd]`);
 
     // جلب الإعدادات من data.Setting
     const rawSettings = result.data.Setting || [];
-    const users = rawSettings.map((u: any) => {
+    const users = rawSettings.map((u: any): User => {
         const cleanU = cleanObjectKeysAndValues(u);
         return {
             id: String(cleanU.id || '').trim(),
             user: String(cleanU.user || '').trim(),
             role: (cleanU.role || 'محامي').trim() as any,
-            name: String(cleanU['التكليف'] || cleanU['المدعي'] || cleanU['الاسم'] || '').trim(),
+            name: String(cleanU['التكليف'] || cleanU['الاسم'] || '').trim(),
+            plaintiffCode: String(cleanU['كود_المدعي'] || '').trim(),
             pwd: String(cleanU.pwd || '').trim()
         };
     });
 
     if (users.length > 0) {
-        console.log("👤 مستخدمون جاهزون للدخول من [data.Setting]:", users.map(u => ({ user: u.user, role: u.role, name: u.name })));
+        console.log("👤 مستخدمون جاهزون للدخول من [data.Setting]:", users.map(u => ({ user: u.user, role: u.role, name: u.name, plaintiffCode: u.plaintiffCode })));
     } else {
         console.error("❌ قائمة المستخدمين فارغة! تأكد من وجود بيانات في ورقة Setting.");
     }
