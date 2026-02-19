@@ -1,30 +1,36 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import type { CaseSession } from '../types';
 import SessionTable from './SessionTable';
-import { ClipboardDocumentListIcon, ArrowRightIcon, WarningIcon } from './icons';
+import { ClipboardDocumentListIcon, ArrowRightIcon, WarningIcon, CheckBadgeIcon } from './icons';
+
+interface AssignmentFilters {
+    lawyer?: string;
+    plaintiff?: string;
+    special?: 'correctly_linked' | 'unlinked' | 'duplicates';
+    onlyConflicts?: boolean;
+}
 
 interface AssignmentsViewProps {
-    sessions: CaseSession[];
+    sessions: CaseSession[]; // User's filtered sessions
+    allSessions: CaseSession[]; // All sessions for special filters
     onUpdateClick?: (session: CaseSession) => void;
     onViewClick: (session: CaseSession) => void;
     conflictingSessionIds: Set<number>;
-    lawyerFilter?: string | null;
-    plaintiffFilter?: string | null;
-    onClearFilter?: () => void;
-    showOnlyConflicts?: boolean;
+    filters: AssignmentFilters;
+    onClearFilters: () => void;
 }
 
 const AssignmentsView: React.FC<AssignmentsViewProps> = ({ 
     sessions, 
+    allSessions,
     onUpdateClick, 
     onViewClick,
     conflictingSessionIds, 
-    lawyerFilter, 
-    plaintiffFilter,
-    onClearFilter,
-    showOnlyConflicts = false
+    filters,
+    onClearFilters
 }) => {
+    const { lawyerFilter, plaintiffFilter, specialFilter, onlyConflicts: showOnlyConflicts } = filters;
+    
     const [selectedCircuit, setSelectedCircuit] = useState<string>('');
     const [selectedLawyer, setSelectedLawyer] = useState<string>('');
     const [selectedDate, setSelectedDate] = useState<string>('');
@@ -32,14 +38,19 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     const [searchQuery, setSearchQuery] = useState<string>('');
 
     useEffect(() => {
-        if (lawyerFilter) setSelectedLawyer(lawyerFilter);
-        else setSelectedLawyer('');
+        setSelectedLawyer(lawyerFilter || '');
     }, [lawyerFilter]);
 
     useEffect(() => {
-        if (plaintiffFilter) setSelectedPlaintiff(plaintiffFilter);
-        else setSelectedPlaintiff('');
+        setSelectedPlaintiff(plaintiffFilter || '');
     }, [plaintiffFilter]);
+    
+    useEffect(() => {
+        // Reset local filters when a special filter is applied from another page
+        if (specialFilter) {
+             handleResetFilters(false); // don't clear the special filter itself
+        }
+    }, [specialFilter]);
 
     const uniqueCircuits = useMemo(() => {
         const circuits = sessions.map(s => (s['الدائرة'] || '').trim()).filter(Boolean);
@@ -57,9 +68,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         
         const parseDate = (dateStr: string) => {
             const [day, month, year] = dateStr.split('-').map(Number);
-            if (isNaN(day) || isNaN(month) || isNaN(year)) {
-                return new Date(0); 
-            }
+            if (isNaN(day) || isNaN(month) || isNaN(year)) return new Date(0); 
             return new Date(year, month - 1, day);
         };
 
@@ -77,13 +86,9 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         if (!showOnlyConflicts) return conflictingSessionIds;
 
         let filteredByEntity: CaseSession[];
-        if (lawyerFilter) {
-            filteredByEntity = sessions.filter(s => (s['التكليف'] || '').trim() === lawyerFilter.trim());
-        } else if (plaintiffFilter) {
-            filteredByEntity = sessions.filter(s => (s['المدعي'] || '').trim() === plaintiffFilter.trim());
-        } else {
-            return conflictingSessionIds;
-        }
+        if (lawyerFilter) filteredByEntity = sessions.filter(s => (s['التكليف'] || '').trim() === lawyerFilter.trim());
+        else if (plaintiffFilter) filteredByEntity = sessions.filter(s => (s['المدعي'] || '').trim() === plaintiffFilter.trim());
+        else return conflictingSessionIds;
 
         const timeMap = new Map<string, number[]>();
         filteredByEntity.forEach(s => {
@@ -100,10 +105,33 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     }, [sessions, lawyerFilter, plaintiffFilter, showOnlyConflicts, conflictingSessionIds]);
 
     const filteredSessions = useMemo(() => {
-        let baseSessions = sessions;
-        if (!lawyerFilter && !plaintiffFilter) {
-            baseSessions = sessions.filter(s => s['التكليف'] && s['التكليف'].trim() !== '');
+        // Special filters override everything else and operate on allSessions
+        if (specialFilter) {
+            const caseNumberCounts = new Map<string, number[]>();
+            const violationNumberCounts = new Map<string, number[]>();
+            allSessions.forEach(s => {
+                const caseNum = String(s['رقم الدعوى'] || '').trim();
+                if (caseNum) {
+                    if (!caseNumberCounts.has(caseNum)) caseNumberCounts.set(caseNum, []);
+                    caseNumberCounts.get(caseNum)!.push(s.id);
+                }
+                const violationNum = String(s['رقم المخالفة'] || '').trim();
+                if (violationNum) {
+                    if (!violationNumberCounts.has(violationNum)) violationNumberCounts.set(violationNum, []);
+                    violationNumberCounts.get(violationNum)!.push(s.id);
+                }
+            });
+            const duplicateIds = new Set<number>();
+            caseNumberCounts.forEach(ids => { if (ids.length > 1) ids.forEach(id => duplicateIds.add(id)); });
+            violationNumberCounts.forEach(ids => { if (ids.length > 1) ids.forEach(id => duplicateIds.add(id)); });
+
+            if (specialFilter === 'duplicates') return allSessions.filter(s => duplicateIds.has(s.id));
+            if (specialFilter === 'unlinked') return allSessions.filter(s => (!!s['رقم الدعوى'] && !s['رقم المخالفة']) || (!s['رقم الدعوى'] && !!s['رقم المخالفة']));
+            if (specialFilter === 'correctly_linked') return allSessions.filter(s => !!s['رقم الدعوى'] && !!s['رقم المخالفة'] && !duplicateIds.has(s.id));
         }
+        
+        let baseSessions = sessions;
+        if (!lawyerFilter && !plaintiffFilter) baseSessions = sessions.filter(s => s['التكليف'] && s['التكليف'].trim() !== '');
         
         let filtered = baseSessions;
         
@@ -121,44 +149,38 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
             });
         }
         
-        if (showOnlyConflicts) {
-            filtered = filtered.filter(s => entitySpecificConflictIds.has(s.id));
-        }
+        if (showOnlyConflicts) filtered = filtered.filter(s => entitySpecificConflictIds.has(s.id));
         
         return filtered;
-    }, [sessions, selectedCircuit, selectedDate, selectedPlaintiff, selectedLawyer, searchQuery, lawyerFilter, plaintiffFilter, showOnlyConflicts, entitySpecificConflictIds]);
+    }, [allSessions, sessions, filters, selectedCircuit, selectedDate, selectedPlaintiff, selectedLawyer, searchQuery, entitySpecificConflictIds]);
     
     const dynamicContent = useMemo(() => {
-        if (plaintiffFilter) {
-            return {
-                title: `قضايا المدعي: ${plaintiffFilter}`,
-                subtitle: `عرض جميع القضايا المرتبطة بهذا المدعي.`
-            };
-        }
-        if (lawyerFilter) {
-             return {
-                title: `جلسات المحامي: ${lawyerFilter}`,
-                subtitle: `عرض جميع الجلسات المكلف بها هذا المحامي.`
-            };
-        }
-        return {
-            title: 'جدول كافة التكليفات',
-            subtitle: 'إدارة وتصفية مهام أعضاء المكتب'
-        };
-    }, [lawyerFilter, plaintiffFilter]);
+        if (specialFilter === 'correctly_linked') return { title: 'الجلسات الصحيحة', subtitle: 'عرض الجلسات المكتملة البيانات والفريدة.' };
+        if (specialFilter === 'unlinked') return { title: 'الجلسات غير المرتبطة', subtitle: 'جلسات ينقصها رقم دعوى أو رقم مخالفة.' };
+        if (specialFilter === 'duplicates') return { title: 'الجلسات المكررة', subtitle: 'جلسات لها نفس رقم الدعوى أو رقم المخالفة.' };
+        if (plaintiffFilter) return { title: `قضايا المدعي: ${plaintiffFilter}`, subtitle: `عرض جميع القضايا المرتبطة بهذا المدعي.` };
+        if (lawyerFilter) return { title: `جلسات المحامي: ${lawyerFilter}`, subtitle: `عرض جميع الجلسات المكلف بها هذا المحامي.` };
+        return { title: 'جدول كافة التكليفات', subtitle: 'إدارة وتصفية مهام أعضاء المكتب' };
+    }, [filters]);
 
-    const handleResetFilters = () => {
+    const handleResetFilters = (clearSpecial = true) => {
         setSelectedCircuit('');
         setSelectedLawyer('');
         setSelectedDate('');
         setSelectedPlaintiff('');
         setSearchQuery('');
-        if (onClearFilter) onClearFilter();
+        if (clearSpecial) onClearFilters();
     };
 
+    const specialFilterBanners = {
+        correctly_linked: { icon: <CheckBadgeIcon className="w-5 h-5 text-green-600" />, text: "عرض الجلسات الصحيحة والمكتملة فقط.", style: "bg-green-50 border-green-200 text-green-800" },
+        unlinked: { icon: <WarningIcon className="w-5 h-5 text-amber-600" />, text: "عرض الجلسات غير المرتبطة (التي ينقصها رقم دعوى أو مخالفة).", style: "bg-amber-50 border-amber-200 text-amber-800" },
+        duplicates: { icon: <WarningIcon className="w-5 h-5 text-red-600" />, text: "عرض الجلسات المكررة (حسب رقم الدعوى أو المخالفة).", style: "bg-red-50 border-red-200 text-red-800" }
+    };
+    
     return (
         <div className="bg-white p-4 md:p-6 rounded-xl shadow-md animate-in fade-in slide-in-from-left-4 duration-500">
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between mb-6 gap-6 border-b border-border pb-6">
+            <div className={`flex flex-col xl:flex-row xl:items-center justify-between mb-6 gap-6 ${!specialFilter && 'border-b border-border pb-6'}`}>
                 <div className="flex items-center">
                     <div className="p-3 bg-primary/10 rounded-xl ml-4">
                         <ClipboardDocumentListIcon className="w-8 h-8 text-primary" />
@@ -169,95 +191,48 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                     </div>
                 </div>
                 
-                <div className="flex flex-wrap items-end gap-3">
+                {!specialFilter && <div className="flex flex-wrap items-end gap-3">
                     <div className="flex flex-col min-w-[200px] relative">
                         <label className="text-[10px] font-bold text-text mb-1 mr-1">بحث برقم الدعوى / المخالفة</label>
                         <div className="relative">
-                            <input 
-                                type="text"
-                                placeholder="ادخل الرقم هنا..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-light border border-border rounded-lg pl-3 pr-10 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                            />
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-primary opacity-50">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                            </svg>
+                            <input type="text" placeholder="ادخل الرقم هنا..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-light border border-border rounded-lg pl-3 pr-10 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"/>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-primary opacity-50"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
                         </div>
                     </div>
-
-                    <div className="flex flex-col min-w-[140px]">
-                        <label className="text-[10px] font-bold text-text mb-1 mr-1">حسب التاريخ</label>
-                        <select 
-                            value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
-                            className="bg-light border border-border rounded-lg px-3 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer"
-                        >
-                            <option value="">جميع التواريخ</option>
-                            {uniqueDates.map(date => (<option key={date} value={date}>{date}</option>))}
-                        </select>
-                    </div>
-
-                    <div className="flex flex-col min-w-[140px]">
-                        <label className="text-[10px] font-bold text-text mb-1 mr-1">حسب الدائرة</label>
-                        <select value={selectedCircuit} onChange={(e) => setSelectedCircuit(e.target.value)} className="bg-light border border-border rounded-lg px-3 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer">
-                            <option value="">جميع الدوائر</option>
-                            {uniqueCircuits.map(circuit => (<option key={circuit} value={circuit}>{circuit}</option>))}
-                        </select>
-                    </div>
-
-                    <div className="flex flex-col min-w-[140px]">
-                        <label className="text-[10px] font-bold text-text mb-1 mr-1">حسب التكليف</label>
-                        <select value={selectedLawyer} onChange={(e) => setSelectedLawyer(e.target.value)} disabled={!!lawyerFilter} className="bg-light border border-border rounded-lg px-3 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer disabled:opacity-50 disabled:bg-border">
-                            <option value="">جميع المكلفين</option>
-                            {uniqueLawyers.map(lawyer => (<option key={lawyer} value={lawyer}>{lawyer}</option>))}
-                        </select>
-                    </div>
-
-                    <button onClick={handleResetFilters} className="p-2.5 text-primary hover:bg-primary/5 rounded-lg transition-colors group border border-border bg-white" title="إعادة ضبط الفلاتر">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                        </svg>
-                    </button>
-                </div>
+                    <div className="flex flex-col min-w-[140px]"><label className="text-[10px] font-bold text-text mb-1 mr-1">حسب التاريخ</label><select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-light border border-border rounded-lg px-3 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer"><option value="">جميع التواريخ</option>{uniqueDates.map(date => (<option key={date} value={date}>{date}</option>))}</select></div>
+                    <div className="flex flex-col min-w-[140px]"><label className="text-[10px] font-bold text-text mb-1 mr-1">حسب الدائرة</label><select value={selectedCircuit} onChange={(e) => setSelectedCircuit(e.target.value)} className="bg-light border border-border rounded-lg px-3 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer"><option value="">جميع الدوائر</option>{uniqueCircuits.map(circuit => (<option key={circuit} value={circuit}>{circuit}</option>))}</select></div>
+                    <div className="flex flex-col min-w-[140px]"><label className="text-[10px] font-bold text-text mb-1 mr-1">حسب المدعي</label><select value={selectedPlaintiff} onChange={(e) => setSelectedPlaintiff(e.target.value)} disabled={!!plaintiffFilter} className="bg-light border border-border rounded-lg px-3 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer disabled:opacity-50 disabled:bg-border"><option value="">جميع المدعين</option>{uniquePlaintiffs.map(plaintiff => (<option key={plaintiff} value={plaintiff}>{plaintiff}</option>))}</select></div>
+                    <div className="flex flex-col min-w-[140px]"><label className="text-[10px] font-bold text-text mb-1 mr-1">حسب التكليف</label><select value={selectedLawyer} onChange={(e) => setSelectedLawyer(e.target.value)} disabled={!!lawyerFilter} className="bg-light border border-border rounded-lg px-3 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer disabled:opacity-50 disabled:bg-border"><option value="">جميع المكلفين</option>{uniqueLawyers.map(lawyer => (<option key={lawyer} value={lawyer}>{lawyer}</option>))}</select></div>
+                    <button onClick={() => handleResetFilters()} className="p-2.5 text-primary hover:bg-primary/5 rounded-lg transition-colors group border border-border bg-white" title="إعادة ضبط الفلاتر"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg></button>
+                </div>}
             </div>
 
-            {showOnlyConflicts && (
-                <div className="mb-6 bg-red-50 border border-red-100 p-4 rounded-xl flex items-center justify-between animate-pulse">
+            {specialFilter && specialFilterBanners[specialFilter] && (
+                <div className={`mb-6 p-4 rounded-xl flex items-center justify-between border ${specialFilterBanners[specialFilter].style}`}>
                     <div className="flex items-center">
-                        <WarningIcon className="w-5 h-5 text-red-600 ml-3" />
-                        <div>
-                            <h4 className="text-sm font-bold text-red-800">وضع تدقيق التعارضات مفعل</h4>
-                            <p className="text-xs text-red-700 opacity-80">يتم عرض الجلسات المتداخلة زمنياً فقط بناءً على الفلاتر الحالية.</p>
+                        {specialFilterBanners[specialFilter].icon}
+                        <div className="mr-3">
+                            <h4 className="text-sm font-bold">{specialFilterBanners[specialFilter].text}</h4>
                         </div>
                     </div>
+                    <button onClick={onClearFilters} className="text-xs font-bold hover:underline opacity-70 hover:opacity-100">إلغاء الفلتر</button>
+                </div>
+            )}
+            
+            {showOnlyConflicts && (
+                <div className="mb-6 bg-red-50 border border-red-100 p-4 rounded-xl flex items-center justify-between animate-pulse">
+                    <div className="flex items-center"><WarningIcon className="w-5 h-5 text-red-600 ml-3" /><div><h4 className="text-sm font-bold text-red-800">وضع تدقيق التعارضات مفعل</h4><p className="text-xs text-red-700 opacity-80">يتم عرض الجلسات المتداخلة زمنياً فقط بناءً على الفلاتر الحالية.</p></div></div>
                 </div>
             )}
             
             <div className="min-h-[300px]">
-                <SessionTable 
-                    sessions={filteredSessions} 
-                    onUpdateClick={onUpdateClick} 
-                    onViewClick={onViewClick}
-                    showDateColumn={true}
-                    conflictingSessionIds={entitySpecificConflictIds}
-                />
-
+                <SessionTable sessions={filteredSessions} onUpdateClick={onUpdateClick} onViewClick={onViewClick} showDateColumn={true} conflictingSessionIds={entitySpecificConflictIds}/>
                 {filteredSessions.length === 0 && (
                     <div className="py-20 text-center bg-light/30 rounded-xl border-2 border-dashed border-border mt-2">
-                        <div className="bg-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-border">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                            </svg>
-                        </div>
+                        <div className="bg-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-border"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg></div>
                         <h3 className="text-lg font-bold text-dark">لا توجد نتائج</h3>
                         <p className="text-sm text-text mt-1 max-w-xs mx-auto">لم نعثر على أي جلسات تطابق الفلاتر أو البحث الحالي.</p>
-                        <button 
-                            onClick={handleResetFilters}
-                            className="mt-6 px-6 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-dark transition-all shadow-md shadow-primary/20"
-                        >
-                            إلغاء البحث والفلترة
-                        </button>
+                        <button onClick={() => handleResetFilters()} className="mt-6 px-6 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-dark transition-all shadow-md shadow-primary/20">إلغاء البحث والفلترة</button>
                     </div>
                 )}
             </div>

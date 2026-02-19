@@ -1,11 +1,10 @@
-
 import React, { useMemo } from 'react';
 import type { CaseSession } from '../types';
 import { UserPlusIcon, WarningIcon, CalendarIcon, ClockIcon, BriefcaseIcon, ArrowRightIcon } from './icons';
 
 interface LawyerReportProps {
     sessions: CaseSession[];
-    onLawyerClick: (lawyerName: string, onlyConflicts?: boolean) => void;
+    onLawyerClick: (lawyerName: string, onlyConflicts: boolean) => void;
 }
 
 interface LawyerStats {

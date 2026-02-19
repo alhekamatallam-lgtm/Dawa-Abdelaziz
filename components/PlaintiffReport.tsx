@@ -1,11 +1,10 @@
-
 import React, { useMemo } from 'react';
 import type { CaseSession } from '../types';
 import { UserGroupIcon, WarningIcon, ArrowRightIcon } from './icons';
 
 interface PlaintiffReportProps {
     sessions: CaseSession[];
-    onPlaintiffClick: (plaintiffName: string, onlyConflicts?: boolean) => void;
+    onPlaintiffClick: (plaintiffName: string, onlyConflicts: boolean) => void;
 }
 
 interface PlaintiffStats {

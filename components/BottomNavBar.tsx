@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon, BriefcaseIcon, UserGroupIcon } from './icons';
+import { CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon, BriefcaseIcon, UserGroupIcon, QuickReportIcon } from './icons';
 
 interface BottomNavBarProps {
     view: string;
@@ -16,15 +15,16 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ view, setView, role }) => {
         { id: 'assignments', label: 'الجلسات', icon: ClipboardDocumentListIcon },
         { id: 'lawyer_report', label: 'المندوبين', icon: BriefcaseIcon },
         { id: 'plaintiff_report', label: 'المدعين', icon: UserGroupIcon },
+        { id: 'quick_reports', label: 'الجودة', icon: QuickReportIcon },
     ];
 
     return (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-2 flex justify-around shadow-lg z-50">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-2 flex justify-around shadow-lg z-50">
             {items.map(i => (
                 <button 
                     key={i.id} 
                     onClick={() => setView(i.id)} 
-                    className={`flex flex-col items-center transition-all duration-300 ${view === i.id ? 'text-primary scale-110' : 'text-gray-400 opacity-60'}`}
+                    className={`flex flex-col items-center transition-all duration-300 w-16 ${view === i.id ? 'text-primary scale-110' : 'text-gray-400 opacity-60'}`}
                 >
                     <i.icon className="w-6 h-6" />
                     <span className="text-[10px] font-bold mt-1">{i.label}</span>

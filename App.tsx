@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { CaseSession, SessionsByDate, User } from './types';
 import { fetchInitialData, updateSession } from './services/api';
 import CalendarView from './components/CalendarView';
 import SessionDetails from './components/SessionDetails';
-import { ErrorIcon, CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon, BriefcaseIcon, UserGroupIcon } from './components/icons';
+import { ErrorIcon, CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon, BriefcaseIcon, UserGroupIcon, QuickReportIcon } from './components/icons';
 import UpdateModal from './components/UpdateModal';
 import ViewModal from './components/ViewModal';
 import Dashboard from './components/Dashboard';
@@ -15,6 +14,17 @@ import BottomNavBar from './components/BottomNavBar';
 import LoadingScreen from './components/LoadingScreen';
 import LoginScreen from './components/LoginScreen';
 import Logo from './components/Logo';
+import QuickReports from './components/QuickReports';
+
+type View = 'calendar' | 'dashboard' | 'assignments' | 'lawyer_report' | 'plaintiff_report' | 'quick_reports';
+type SpecialFilter = 'correctly_linked' | 'unlinked' | 'duplicates';
+interface AssignmentFilters {
+    lawyer?: string;
+    plaintiff?: string;
+    special?: SpecialFilter;
+    onlyConflicts?: boolean;
+}
+
 
 // FIX: Moved `normalizeArabicString` outside of the component.
 // It is a pure function and does not need to be redefined on every render. This also fixes a missing dependency issue in `filteredSessions`.
@@ -33,12 +43,13 @@ const App: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-    const [view, setView] = useState<'calendar' | 'dashboard' | 'assignments' | 'lawyer_report' | 'plaintiff_report'>('calendar');
+    const [view, setView] = useState<View>('calendar');
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState<boolean>(false);
     const [sessionToUpdate, setSessionToUpdate] = useState<CaseSession | null>(null);
     const [sessionToView, setSessionToView] = useState<CaseSession | null>(null);
+    const [assignmentFilters, setAssignmentFilters] = useState<AssignmentFilters>({});
 
     const [showOnlyUpcomingDays, setShowOnlyUpcomingDays] = useState<boolean>(true);
     const [showOnlyConflictsInSidebar, setShowOnlyConflictsInSidebar] = useState<boolean>(false);
@@ -171,14 +182,20 @@ const App: React.FC = () => {
         { id: 'calendar', label: 'التقويم', icon: CalendarIcon },
         { id: 'dashboard', label: 'لوحة التحكم', icon: ChartBarIcon },
         { id: 'assignments', label: 'التكليف', icon: ClipboardDocumentListIcon },
-        { id: 'lawyer_report', label: 'تقرير المندوبين', icon: BriefcaseIcon },
-        { id: 'plaintiff_report', label: 'تقرير المدعين', icon: UserGroupIcon },
+        { id: 'lawyer_report', label: 'المندوبين', icon: BriefcaseIcon },
+        { id: 'plaintiff_report', label: 'المدعين', icon: UserGroupIcon },
+        { id: 'quick_reports', label: 'جودة البيانات', icon: QuickReportIcon },
     ];
 
     const handleLogout = () => {
         localStorage.removeItem('alsaad_user');
         localStorage.removeItem('alsaad_pwd');
         setCurrentUser(null);
+    };
+
+    const navigateToAssignments = (filters: AssignmentFilters) => {
+        setAssignmentFilters(filters);
+        setView('assignments');
     };
 
     const canEdit = currentUser?.role === 'مشرف' || currentUser?.role === 'محامي';
@@ -247,16 +264,20 @@ const App: React.FC = () => {
                 ) : (
                     <div className="w-full bg-white rounded-[2.5rem] border border-border flex flex-col p-10 shadow-sm overflow-hidden animate-in fade-in duration-500">
                         {view === 'dashboard' && <Dashboard sessions={allSessions} />}
+                        {view === 'quick_reports' && <QuickReports sessions={allSessions} onNavigate={navigateToAssignments} />}
                         {view === 'assignments' && (
                             <AssignmentsView 
                                 sessions={filteredSessions} 
+                                allSessions={allSessions}
                                 onUpdateClick={canEdit ? (s) => { setSessionToUpdate(s); setIsModalOpen(true); } : undefined} 
                                 onViewClick={(s) => { setSessionToView(s); setIsViewModalOpen(true); }}
-                                conflictingSessionIds={new Set()} 
+                                conflictingSessionIds={new Set()}
+                                filters={assignmentFilters}
+                                onClearFilters={() => setAssignmentFilters({})}
                             />
                         )}
-                        {view === 'lawyer_report' && <LawyerReport sessions={filteredSessions} onLawyerClick={() => setView('assignments')} />}
-                        {view === 'plaintiff_report' && <PlaintiffReport sessions={filteredSessions} onPlaintiffClick={() => setView('assignments')} />}
+                        {view === 'lawyer_report' && <LawyerReport sessions={filteredSessions} onLawyerClick={(lawyer, conflicts) => navigateToAssignments({ lawyer, onlyConflicts: conflicts })} />}
+                        {view === 'plaintiff_report' && <PlaintiffReport sessions={filteredSessions} onPlaintiffClick={(plaintiff, conflicts) => navigateToAssignments({ plaintiff, onlyConflicts: conflicts })} />}
                     </div>
                 )}
             </main>
