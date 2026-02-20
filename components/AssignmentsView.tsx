@@ -1,7 +1,91 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import type { CaseSession } from '../types';
 import SessionTable from './SessionTable';
-import { ClipboardDocumentListIcon, ArrowRightIcon, WarningIcon, CheckBadgeIcon } from './icons';
+import { ClipboardDocumentListIcon, WarningIcon, CheckBadgeIcon } from './icons';
+
+// --- New MultiSelectFilter Component ---
+interface MultiSelectFilterProps {
+    label: string;
+    options: string[];
+    selectedOptions: string[];
+    onChange: (selected: string[]) => void;
+    disabled?: boolean;
+}
+
+const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({ label, options, selectedOptions, onChange, disabled = false }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const wrapperRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [wrapperRef]);
+
+    const handleOptionToggle = (option: string) => {
+        const newSelectedOptions = selectedOptions.includes(option)
+            ? selectedOptions.filter(o => o !== option)
+            : [...selectedOptions, option];
+        onChange(newSelectedOptions);
+    };
+
+    const displayValue = () => {
+        if (disabled && selectedOptions.length > 0) return selectedOptions[0];
+        if (selectedOptions.length === 0) return `كل ${label}`;
+        if (selectedOptions.length === 1) return selectedOptions[0];
+        return `${selectedOptions.length} اختيارات`;
+    };
+
+    return (
+        <div className="relative min-w-[160px]" ref={wrapperRef}>
+            <div className="flex flex-col">
+                <label className="text-[10px] font-bold text-text mb-1 mr-1">{label}</label>
+                <button
+                    type="button"
+                    onClick={() => !disabled && setIsOpen(!isOpen)}
+                    disabled={disabled}
+                    className="w-full bg-light border border-border rounded-lg px-3 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer disabled:opacity-50 disabled:bg-border flex justify-between items-center h-[34px]"
+                >
+                    <span className="truncate">{displayValue()}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={`w-4 h-4 text-primary/60 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}><path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
+                </button>
+            </div>
+            {isOpen && (
+                <div className="absolute top-full mt-2 w-full bg-white border border-border rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
+                    <ul className="p-2 space-y-1">
+                        {options.map(option => (
+                            <li key={option}>
+                                <label className="flex items-center gap-2 p-2 rounded-md hover:bg-light cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedOptions.includes(option)}
+                                        onChange={() => handleOptionToggle(option)}
+                                        className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer accent-primary"
+                                    />
+                                    <span className="text-xs font-medium text-dark">{option}</span>
+                                </label>
+                            </li>
+                        ))}
+                         {options.length > 3 && (
+                             <li className="border-t border-border mt-2 pt-2">
+                                <button onClick={() => onChange([])} className="text-xs text-center w-full font-bold text-red-500 p-2 hover:bg-red-50 rounded">
+                                    إلغاء تحديد الكل
+                                </button>
+                             </li>
+                         )}
+                    </ul>
+                </div>
+            )}
+        </div>
+    );
+};
+// --- End MultiSelectFilter Component ---
 
 interface AssignmentFilters {
     lawyer?: string;
@@ -31,18 +115,18 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
 }) => {
     const { lawyerFilter, plaintiffFilter, specialFilter, onlyConflicts: showOnlyConflicts } = filters;
     
-    const [selectedCircuit, setSelectedCircuit] = useState<string>('');
-    const [selectedLawyer, setSelectedLawyer] = useState<string>('');
-    const [selectedDate, setSelectedDate] = useState<string>('');
-    const [selectedPlaintiff, setSelectedPlaintiff] = useState<string>('');
+    const [selectedCircuits, setSelectedCircuits] = useState<string[]>([]);
+    const [selectedLawyers, setSelectedLawyers] = useState<string[]>([]);
+    const [selectedDates, setSelectedDates] = useState<string[]>([]);
+    const [selectedPlaintiffs, setSelectedPlaintiffs] = useState<string[]>([]);
     const [searchQuery, setSearchQuery] = useState<string>('');
 
     useEffect(() => {
-        setSelectedLawyer(lawyerFilter || '');
+        setSelectedLawyers(lawyerFilter ? [lawyerFilter] : []);
     }, [lawyerFilter]);
 
     useEffect(() => {
-        setSelectedPlaintiff(plaintiffFilter || '');
+        setSelectedPlaintiffs(plaintiffFilter ? [plaintiffFilter] : []);
     }, [plaintiffFilter]);
     
     useEffect(() => {
@@ -135,10 +219,10 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         
         let filtered = baseSessions;
         
-        if (selectedCircuit) filtered = filtered.filter(s => (s['الدائرة'] || '').trim() === selectedCircuit);
-        if (selectedDate) filtered = filtered.filter(s => (s['التاريخ'] || '').trim() === selectedDate);
-        if (selectedPlaintiff) filtered = filtered.filter(s => (s['المدعي'] || '').trim() === selectedPlaintiff);
-        if (selectedLawyer) filtered = filtered.filter(s => (s['التكليف'] || '').trim() === selectedLawyer);
+        if (selectedCircuits.length > 0) filtered = filtered.filter(s => selectedCircuits.includes((s['الدائرة'] || '').trim()));
+        if (selectedDates.length > 0) filtered = filtered.filter(s => selectedDates.includes((s['التاريخ'] || '').trim()));
+        if (selectedPlaintiffs.length > 0) filtered = filtered.filter(s => selectedPlaintiffs.includes((s['المدعي'] || '').trim()));
+        if (selectedLawyers.length > 0) filtered = filtered.filter(s => selectedLawyers.includes((s['التكليف'] || '').trim()));
         
         if (searchQuery.trim()) {
             const query = searchQuery.trim().toLowerCase();
@@ -152,7 +236,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         if (showOnlyConflicts) filtered = filtered.filter(s => entitySpecificConflictIds.has(s.id));
         
         return filtered;
-    }, [allSessions, sessions, filters, selectedCircuit, selectedDate, selectedPlaintiff, selectedLawyer, searchQuery, entitySpecificConflictIds]);
+    }, [allSessions, sessions, filters, selectedCircuits, selectedDates, selectedPlaintiffs, selectedLawyers, searchQuery, entitySpecificConflictIds]);
     
     const dynamicContent = useMemo(() => {
         if (specialFilter === 'correctly_linked') return { title: 'الجلسات الصحيحة', subtitle: 'عرض الجلسات المكتملة البيانات والفريدة.' };
@@ -164,10 +248,10 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     }, [filters]);
 
     const handleResetFilters = (clearSpecial = true) => {
-        setSelectedCircuit('');
-        setSelectedLawyer('');
-        setSelectedDate('');
-        setSelectedPlaintiff('');
+        setSelectedCircuits([]);
+        setSelectedLawyers([]);
+        setSelectedDates([]);
+        setSelectedPlaintiffs([]);
         setSearchQuery('');
         if (clearSpecial) onClearFilters();
     };
@@ -180,14 +264,19 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     
     return (
         <div className="bg-white p-4 md:p-6 rounded-xl shadow-md animate-in fade-in slide-in-from-left-4 duration-500">
-            <div className={`flex flex-col xl:flex-row xl:items-center justify-between mb-6 gap-6 ${!specialFilter && 'border-b border-border pb-6'}`}>
-                <div className="flex items-center">
-                    <div className="p-3 bg-primary/10 rounded-xl ml-4">
+            <div className={`flex flex-col xl:flex-row xl:items-start justify-between mb-6 gap-6 ${!specialFilter && 'border-b border-border pb-6'}`}>
+                <div className="flex items-start">
+                    <div className="p-3 bg-primary/10 rounded-xl ml-4 shrink-0">
                         <ClipboardDocumentListIcon className="w-8 h-8 text-primary" />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold text-dark">{dynamicContent.title}</h2>
-                        <p className="text-sm text-text opacity-70">{dynamicContent.subtitle}</p>
+                        <div className="flex items-center gap-4 flex-wrap">
+                            <h2 className="text-2xl font-bold text-dark">{dynamicContent.title}</h2>
+                            <span className="bg-primary/10 text-primary font-bold px-3 py-1.5 rounded-full text-sm shrink-0">
+                                {filteredSessions.length} نتيجة
+                            </span>
+                        </div>
+                        <p className="text-sm text-text opacity-70 mt-1">{dynamicContent.subtitle}</p>
                     </div>
                 </div>
                 
@@ -199,10 +288,11 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-primary opacity-50"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
                         </div>
                     </div>
-                    <div className="flex flex-col min-w-[140px]"><label className="text-[10px] font-bold text-text mb-1 mr-1">حسب التاريخ</label><select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-light border border-border rounded-lg px-3 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer"><option value="">جميع التواريخ</option>{uniqueDates.map(date => (<option key={date} value={date}>{date}</option>))}</select></div>
-                    <div className="flex flex-col min-w-[140px]"><label className="text-[10px] font-bold text-text mb-1 mr-1">حسب الدائرة</label><select value={selectedCircuit} onChange={(e) => setSelectedCircuit(e.target.value)} className="bg-light border border-border rounded-lg px-3 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer"><option value="">جميع الدوائر</option>{uniqueCircuits.map(circuit => (<option key={circuit} value={circuit}>{circuit}</option>))}</select></div>
-                    <div className="flex flex-col min-w-[140px]"><label className="text-[10px] font-bold text-text mb-1 mr-1">حسب المدعي</label><select value={selectedPlaintiff} onChange={(e) => setSelectedPlaintiff(e.target.value)} disabled={!!plaintiffFilter} className="bg-light border border-border rounded-lg px-3 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer disabled:opacity-50 disabled:bg-border"><option value="">جميع المدعين</option>{uniquePlaintiffs.map(plaintiff => (<option key={plaintiff} value={plaintiff}>{plaintiff}</option>))}</select></div>
-                    <div className="flex flex-col min-w-[140px]"><label className="text-[10px] font-bold text-text mb-1 mr-1">حسب التكليف</label><select value={selectedLawyer} onChange={(e) => setSelectedLawyer(e.target.value)} disabled={!!lawyerFilter} className="bg-light border border-border rounded-lg px-3 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer disabled:opacity-50 disabled:bg-border"><option value="">جميع المكلفين</option>{uniqueLawyers.map(lawyer => (<option key={lawyer} value={lawyer}>{lawyer}</option>))}</select></div>
+                    <MultiSelectFilter label="التواريخ" options={uniqueDates} selectedOptions={selectedDates} onChange={setSelectedDates} />
+                    <MultiSelectFilter label="الدوائر" options={uniqueCircuits} selectedOptions={selectedCircuits} onChange={setSelectedCircuits} />
+                    <MultiSelectFilter label="المدعين" options={uniquePlaintiffs} selectedOptions={selectedPlaintiffs} onChange={setSelectedPlaintiffs} disabled={!!plaintiffFilter} />
+                    <MultiSelectFilter label="المكلفين" options={uniqueLawyers} selectedOptions={selectedLawyers} onChange={setSelectedLawyers} disabled={!!lawyerFilter} />
+
                     <button onClick={() => handleResetFilters()} className="p-2.5 text-primary hover:bg-primary/5 rounded-lg transition-colors group border border-border bg-white" title="إعادة ضبط الفلاتر"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg></button>
                 </div>}
             </div>
