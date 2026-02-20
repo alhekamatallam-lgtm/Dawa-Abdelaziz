@@ -73,12 +73,53 @@ export const fetchInitialData = async (): Promise<{ sessions: CaseSession[], use
 };
 
 export const updateSession = async (id: number, updates: Partial<CaseSession>): Promise<any> => {
-    const payload = { id: String(id), patch: updates };
-    await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        mode: 'no-cors',
-    });
-    return { success: true };
+    const payload = { 
+        sheet: "dd",
+        id: id, 
+        data: updates 
+    };
+    
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify(payload),
+        });
+        
+        // Google Apps Script redirects might cause issues with reading JSON 
+        // if CORS isn't perfect, but text/plain often helps.
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to update session');
+        }
+        return result;
+    } catch (error) {
+        console.error("Error updating session:", error);
+        throw error;
+    }
+};
+
+export const updateUserSetting = async (id: string, updates: Partial<User>): Promise<any> => {
+    const payload = { 
+        sheet: "Setting",
+        id: id, 
+        data: updates 
+    };
+    
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify(payload),
+        });
+        
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to update setting');
+        }
+        return result;
+    } catch (error) {
+        console.error("Error updating user setting:", error);
+        throw error;
+    }
 };

@@ -91,7 +91,11 @@ const QuickReports: React.FC<QuickReportsProps> = ({ sessions, onNavigate }) => 
             
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {reports.map((report) => (
-                    <div key={report.title} className={`bg-white rounded-2xl shadow-sm border flex flex-col justify-between p-6 transition-all hover:shadow-lg hover:-translate-y-1`}>
+                    <div 
+                        key={report.title} 
+                        onClick={() => onNavigate({ special: report.filter as any })}
+                        className={`bg-white rounded-2xl shadow-sm border flex flex-col justify-between p-6 transition-all hover:shadow-lg hover:-translate-y-1 cursor-pointer`}
+                    >
                         <div>
                             <div className="flex items-start justify-between">
                                 <div className={`p-3 rounded-full bg-${report.color}-50`}>
@@ -104,13 +108,12 @@ const QuickReports: React.FC<QuickReportsProps> = ({ sessions, onNavigate }) => 
                             <h3 className="text-lg font-bold text-dark mt-4">{report.title}</h3>
                             <p className="text-xs text-text/80 mt-2 leading-relaxed">{report.description}</p>
                         </div>
-                        <button
-                            onClick={() => onNavigate({ special: report.filter as any })}
+                        <div
                             className={`mt-6 w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all shadow-sm bg-${report.color}-500 text-white hover:bg-${report.color}-600`}
                         >
                             <span>عرض الجلسات ({report.count})</span>
                             <ArrowRightIcon className="w-4 h-4" />
-                        </button>
+                        </div>
                     </div>
                 ))}
             </div>

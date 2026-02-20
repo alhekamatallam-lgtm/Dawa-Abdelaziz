@@ -80,13 +80,14 @@ const SessionTable: React.FC<SessionTableProps> = ({
                 <tbody className="bg-white divide-y divide-border">
                     {sortedSessions.map((session) => {
                         const isConflict = conflictingSessionIds?.has(session.id);
+                        const isNoShow = session['حضور الجلسة'] === 'لم أحضر';
                         const isExpanded = expandedRowId === session.id;
                         const circuitName = (session['الدائرة'] || '').trim();
 
                         return (
                             <React.Fragment key={session.id}>
                                 <tr 
-                                    className={`${isConflict ? 'bg-amber-50/60' : 'bg-white'} hover:${isConflict ? 'bg-amber-100/80' : 'bg-light'} transition-colors cursor-pointer md:cursor-default`}
+                                    className={`${isNoShow ? 'bg-red-50/80' : isConflict ? 'bg-amber-50/60' : 'bg-white'} hover:${isNoShow ? 'bg-red-100/90' : isConflict ? 'bg-amber-100/80' : 'bg-light'} transition-colors cursor-pointer md:cursor-default relative`}
                                     onClick={() => handleRowToggle(session.id)}
                                 >
                                     {showDateColumn && (
@@ -99,7 +100,15 @@ const SessionTable: React.FC<SessionTableProps> = ({
                                     )}
                                     
                                     <td className="px-4 py-3 whitespace-nowrap">
-                                        <div className="flex items-center text-sm font-medium text-dark">
+                                        <div className="flex items-center text-sm font-medium text-dark gap-2">
+                                            {isNoShow && (
+                                                <div className="flex items-center justify-center">
+                                                    <span className="relative flex h-2 w-2">
+                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
+                                                    </span>
+                                                </div>
+                                            )}
                                             <span>{session['وقت الموعد']}</span>
                                             <span className="mr-1 text-[10px] text-text font-normal">{session['ص- م']}</span>
                                         </div>
@@ -152,9 +161,9 @@ const SessionTable: React.FC<SessionTableProps> = ({
                                     </td>
                                 </tr>
                                 {isExpanded && (
-                                    <tr className={`md:hidden ${isConflict ? 'bg-amber-50' : 'bg-white'}`}>
+                                    <tr className={`md:hidden ${isNoShow ? 'bg-red-50' : isConflict ? 'bg-amber-50' : 'bg-white'}`}>
                                         <td colSpan={showDateColumn ? 8 : 7} className="p-0">
-                                            <div className="px-4 py-4 bg-light/80 border-r-4 border-primary m-2 rounded-lg shadow-inner">
+                                            <div className={`px-4 py-4 bg-light/80 border-r-4 ${isNoShow ? 'border-red-500' : 'border-primary'} m-2 rounded-lg shadow-inner`}>
                                                 <div className="grid grid-cols-2 gap-4 text-xs">
                                                     <div>
                                                         <p className="font-bold text-text mb-1 text-[10px] opacity-60 uppercase">رقم المخالفة</p>
@@ -174,6 +183,15 @@ const SessionTable: React.FC<SessionTableProps> = ({
                                                             {session['التكليف'] || 'لا يوجد تكليف'}
                                                         </p>
                                                     </div>
+                                                    {isNoShow && (
+                                                        <div className="col-span-2 pt-2 mt-2 border-t border-red-200">
+                                                            <p className="font-bold text-red-600 mb-1 text-[10px] opacity-80">حالة الحضور</p>
+                                                            <p className="text-red-700 font-black flex items-center gap-2">
+                                                                <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
+                                                                لم أحضر
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </td>

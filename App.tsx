@@ -3,7 +3,7 @@ import type { CaseSession, SessionsByDate, User } from './types';
 import { fetchInitialData, updateSession } from './services/api';
 import CalendarView from './components/CalendarView';
 import SessionDetails from './components/SessionDetails';
-import { ErrorIcon, CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon, BriefcaseIcon, UserGroupIcon, QuickReportIcon } from './components/icons';
+import { ErrorIcon, CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon, BriefcaseIcon, UserGroupIcon, QuickReportIcon, CogIcon } from './components/icons';
 import UpdateModal from './components/UpdateModal';
 import ViewModal from './components/ViewModal';
 import Dashboard from './components/Dashboard';
@@ -15,8 +15,10 @@ import LoadingScreen from './components/LoadingScreen';
 import LoginScreen from './components/LoginScreen';
 import Logo from './components/Logo';
 import QuickReports from './components/QuickReports';
+import QualityResultsView from './components/QualityResultsView';
+import SettingsView from './components/SettingsView';
 
-type View = 'calendar' | 'dashboard' | 'assignments' | 'lawyer_report' | 'plaintiff_report' | 'quick_reports';
+type View = 'calendar' | 'dashboard' | 'assignments' | 'lawyer_report' | 'plaintiff_report' | 'quick_reports' | 'quality_results' | 'settings';
 type SpecialFilter = 'correctly_linked' | 'unlinked' | 'duplicates';
 interface AssignmentFilters {
     lawyer?: string;
@@ -50,6 +52,7 @@ const App: React.FC = () => {
     const [sessionToUpdate, setSessionToUpdate] = useState<CaseSession | null>(null);
     const [sessionToView, setSessionToView] = useState<CaseSession | null>(null);
     const [assignmentFilters, setAssignmentFilters] = useState<AssignmentFilters>({});
+    const [qualityFilter, setQualityFilter] = useState<SpecialFilter | null>(null);
 
     const [showOnlyUpcomingDays, setShowOnlyUpcomingDays] = useState<boolean>(true);
     const [showOnlyConflictsInSidebar, setShowOnlyConflictsInSidebar] = useState<boolean>(false);
@@ -185,6 +188,7 @@ const App: React.FC = () => {
         { id: 'lawyer_report', label: 'المندوبين', icon: BriefcaseIcon },
         { id: 'plaintiff_report', label: 'المدعين', icon: UserGroupIcon },
         { id: 'quick_reports', label: 'جودة البيانات', icon: QuickReportIcon },
+        { id: 'settings', label: 'الإعدادات', icon: CogIcon },
     ];
 
     const handleLogout = () => {
@@ -196,6 +200,11 @@ const App: React.FC = () => {
     const navigateToAssignments = (filters: AssignmentFilters) => {
         setAssignmentFilters(filters);
         setView('assignments');
+    };
+
+    const navigateToQualityResults = (filters: { special: SpecialFilter }) => {
+        setQualityFilter(filters.special);
+        setView('quality_results');
     };
 
     const canEdit = currentUser?.role === 'مشرف' || currentUser?.role === 'محامي';
@@ -219,7 +228,9 @@ const App: React.FC = () => {
                                 key={item.id}
                                 onClick={() => setView(item.id as any)}
                                 className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                                    view === item.id ? 'bg-primary text-white shadow-md' : 'bg-[#f7f5f2] text-[#6b5f4c] hover:bg-border'
+                                    view === item.id || (item.id === 'quick_reports' && view === 'quality_results') 
+                                    ? 'bg-primary text-white shadow-md' 
+                                    : 'bg-[#f7f5f2] text-[#6b5f4c] hover:bg-border'
                                 }`}
                             >
                                 <item.icon className="w-4 h-4" />
@@ -264,7 +275,15 @@ const App: React.FC = () => {
                 ) : (
                     <div className="w-full bg-white rounded-[2.5rem] border border-border flex flex-col p-10 shadow-sm overflow-hidden animate-in fade-in duration-500">
                         {view === 'dashboard' && <Dashboard sessions={allSessions} />}
-                        {view === 'quick_reports' && <QuickReports sessions={allSessions} onNavigate={navigateToAssignments} />}
+                        {view === 'quick_reports' && <QuickReports sessions={filteredSessions} onNavigate={navigateToQualityResults} />}
+                        {view === 'quality_results' && qualityFilter && (
+                            <QualityResultsView 
+                                sessions={filteredSessions} 
+                                filterType={qualityFilter} 
+                                onBack={() => setView('quick_reports')} 
+                                onViewClick={(s) => { setSessionToView(s); setIsViewModalOpen(true); }}
+                            />
+                        )}
                         {view === 'assignments' && (
                             <AssignmentsView 
                                 sessions={filteredSessions} 
@@ -278,6 +297,21 @@ const App: React.FC = () => {
                         )}
                         {view === 'lawyer_report' && <LawyerReport sessions={filteredSessions} onLawyerClick={(lawyer, conflicts) => navigateToAssignments({ lawyer, onlyConflicts: conflicts })} />}
                         {view === 'plaintiff_report' && <PlaintiffReport sessions={filteredSessions} onPlaintiffClick={(plaintiff, conflicts) => navigateToAssignments({ plaintiff, onlyConflicts: conflicts })} />}
+                        {view === 'settings' && currentUser && (
+                            <SettingsView 
+                                currentUser={currentUser} 
+                                allUsers={users}
+                                onUserUpdate={(updatedUser) => {
+                                    setCurrentUser(updatedUser);
+                                    setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+                                    // Update remember me credentials if they exist
+                                    const savedU = localStorage.getItem('alsaad_user');
+                                    if (savedU && String(updatedUser.user).toLowerCase() === savedU.toLowerCase()) {
+                                        localStorage.setItem('alsaad_pwd', updatedUser.pwd);
+                                    }
+                                }} 
+                            />
+                        )}
                     </div>
                 )}
             </main>

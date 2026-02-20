@@ -189,11 +189,11 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     }, [sessions, lawyerFilter, plaintiffFilter, showOnlyConflicts, conflictingSessionIds]);
 
     const filteredSessions = useMemo(() => {
-        // Special filters override everything else and operate on allSessions
+        // Special filters override everything else and operate on the current session set
         if (specialFilter) {
             const caseNumberCounts = new Map<string, number[]>();
             const violationNumberCounts = new Map<string, number[]>();
-            allSessions.forEach(s => {
+            sessions.forEach(s => {
                 const caseNum = String(s['رقم الدعوى'] || '').trim();
                 if (caseNum) {
                     if (!caseNumberCounts.has(caseNum)) caseNumberCounts.set(caseNum, []);
@@ -209,9 +209,9 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
             caseNumberCounts.forEach(ids => { if (ids.length > 1) ids.forEach(id => duplicateIds.add(id)); });
             violationNumberCounts.forEach(ids => { if (ids.length > 1) ids.forEach(id => duplicateIds.add(id)); });
 
-            if (specialFilter === 'duplicates') return allSessions.filter(s => duplicateIds.has(s.id));
-            if (specialFilter === 'unlinked') return allSessions.filter(s => (!!s['رقم الدعوى'] && !s['رقم المخالفة']) || (!s['رقم الدعوى'] && !!s['رقم المخالفة']));
-            if (specialFilter === 'correctly_linked') return allSessions.filter(s => !!s['رقم الدعوى'] && !!s['رقم المخالفة'] && !duplicateIds.has(s.id));
+            if (specialFilter === 'duplicates') return sessions.filter(s => duplicateIds.has(s.id));
+            if (specialFilter === 'unlinked') return sessions.filter(s => (!!s['رقم الدعوى'] && !s['رقم المخالفة']) || (!s['رقم الدعوى'] && !!s['رقم المخالفة']));
+            if (specialFilter === 'correctly_linked') return sessions.filter(s => !!s['رقم الدعوى'] && !!s['رقم المخالفة'] && !duplicateIds.has(s.id));
         }
         
         let baseSessions = sessions;
