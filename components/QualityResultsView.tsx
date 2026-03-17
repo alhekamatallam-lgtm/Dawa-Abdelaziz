@@ -12,25 +12,22 @@ interface QualityResultsViewProps {
 const QualityResultsView: React.FC<QualityResultsViewProps> = ({ sessions, filterType, onBack, onViewClick }) => {
     
     const filteredSessions = useMemo(() => {
-        const caseNumberCounts = new Map<string, number[]>();
-        const violationNumberCounts = new Map<string, number[]>();
+        const duplicateMap = new Map<string, number[]>();
         
         sessions.forEach(s => {
-            const caseNum = String(s['رقم الدعوى'] || '').trim();
-            if (caseNum) {
-                if (!caseNumberCounts.has(caseNum)) caseNumberCounts.set(caseNum, []);
-                caseNumberCounts.get(caseNum)!.push(s.id);
-            }
+            const sessionNum = String(s['رقم الدعوى'] || '').trim();
             const violationNum = String(s['رقم المخالفة'] || '').trim();
-            if (violationNum) {
-                if (!violationNumberCounts.has(violationNum)) violationNumberCounts.set(violationNum, []);
-                violationNumberCounts.get(violationNum)!.push(s.id);
+            const date = String(s['التاريخ'] || '').trim();
+            
+            if (sessionNum && violationNum && date) {
+                const key = `${sessionNum}_${violationNum}_${date}`;
+                if (!duplicateMap.has(key)) duplicateMap.set(key, []);
+                duplicateMap.get(key)!.push(s.id);
             }
         });
 
         const duplicateIds = new Set<number>();
-        caseNumberCounts.forEach(ids => { if (ids.length > 1) ids.forEach(id => duplicateIds.add(id)); });
-        violationNumberCounts.forEach(ids => { if (ids.length > 1) ids.forEach(id => duplicateIds.add(id)); });
+        duplicateMap.forEach(ids => { if (ids.length > 1) ids.forEach(id => duplicateIds.add(id)); });
 
         if (filterType === 'duplicates') return sessions.filter(s => duplicateIds.has(s.id));
         if (filterType === 'unlinked') return sessions.filter(s => (!!s['رقم الدعوى'] && !s['رقم المخالفة']) || (!s['رقم الدعوى'] && !!s['رقم المخالفة']));

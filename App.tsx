@@ -3,7 +3,7 @@ import type { CaseSession, SessionsByDate, User } from './types';
 import { fetchInitialData, updateSession } from './services/api';
 import CalendarView from './components/CalendarView';
 import SessionDetails from './components/SessionDetails';
-import { ErrorIcon, CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon, BriefcaseIcon, UserGroupIcon, QuickReportIcon, CogIcon } from './components/icons';
+import { ErrorIcon, CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon, BriefcaseIcon, UserGroupIcon, QuickReportIcon, CogIcon, CheckCircleIcon } from './components/icons';
 import UpdateModal from './components/UpdateModal';
 import ViewModal from './components/ViewModal';
 import Dashboard from './components/Dashboard';
@@ -17,8 +17,9 @@ import Logo from './components/Logo';
 import QuickReports from './components/QuickReports';
 import QualityResultsView from './components/QualityResultsView';
 import SettingsView from './components/SettingsView';
+import AttendanceReport from './components/AttendanceReport';
 
-type View = 'calendar' | 'dashboard' | 'assignments' | 'lawyer_report' | 'plaintiff_report' | 'quick_reports' | 'quality_results' | 'settings';
+type View = 'calendar' | 'dashboard' | 'assignments' | 'lawyer_report' | 'plaintiff_report' | 'quick_reports' | 'quality_results' | 'settings' | 'attendance_report';
 type SpecialFilter = 'correctly_linked' | 'unlinked' | 'duplicates';
 interface AssignmentFilters {
     lawyer?: string;
@@ -187,6 +188,7 @@ const App: React.FC = () => {
         { id: 'assignments', label: 'التكليف', icon: ClipboardDocumentListIcon },
         { id: 'lawyer_report', label: 'المندوبين', icon: BriefcaseIcon },
         { id: 'plaintiff_report', label: 'المدعين', icon: UserGroupIcon },
+        { id: 'attendance_report', label: 'تقرير حضور الجلسات', icon: CheckCircleIcon },
         { id: 'quick_reports', label: 'جودة البيانات', icon: QuickReportIcon },
         { id: 'settings', label: 'الإعدادات', icon: CogIcon },
     ];
@@ -297,6 +299,10 @@ const App: React.FC = () => {
                         )}
                         {view === 'lawyer_report' && <LawyerReport sessions={filteredSessions} onLawyerClick={(lawyer, conflicts) => navigateToAssignments({ lawyer, onlyConflicts: conflicts })} />}
                         {view === 'plaintiff_report' && <PlaintiffReport sessions={filteredSessions} onPlaintiffClick={(plaintiff, conflicts) => navigateToAssignments({ plaintiff, onlyConflicts: conflicts })} />}
+                        {view === 'attendance_report' && <AttendanceReport sessions={filteredSessions} onSessionClick={(session) => {
+                            setSessionToView(session);
+                            setIsViewModalOpen(true);
+                        }} />}
                         {view === 'settings' && currentUser && (
                             <SettingsView 
                                 currentUser={currentUser} 

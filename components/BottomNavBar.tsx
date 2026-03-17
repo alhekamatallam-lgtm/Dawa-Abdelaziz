@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon, BriefcaseIcon, UserGroupIcon, QuickReportIcon, CogIcon } from './icons';
+import { CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon, BriefcaseIcon, UserGroupIcon, QuickReportIcon, CogIcon, CheckCircleIcon } from './icons';
 
 interface BottomNavBarProps {
     view: string;
@@ -13,8 +13,7 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ view, setView, role }) => {
         { id: 'calendar', label: 'التقويم', icon: CalendarIcon },
         { id: 'dashboard', label: 'التحكم', icon: ChartBarIcon },
         { id: 'assignments', label: 'الجلسات', icon: ClipboardDocumentListIcon },
-        { id: 'lawyer_report', label: 'المندوبين', icon: BriefcaseIcon },
-        { id: 'plaintiff_report', label: 'المدعين', icon: UserGroupIcon },
+        { id: 'attendance_report', label: 'تقرير الحضور', icon: CheckCircleIcon },
         { id: 'quick_reports', label: 'الجودة', icon: QuickReportIcon },
         { id: 'settings', label: 'الإعدادات', icon: CogIcon },
     ];
