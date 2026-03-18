@@ -17,9 +17,11 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
         const totalAttended = attendedSessions.length;
         const withMinutes = attendedSessions.filter(s => s['محضر الجلسة'] && s['محضر الجلسة'].trim() !== '').length;
         const withoutMinutes = totalAttended - withMinutes;
+        const cancelledDecisionSessions = sessions.filter(s => s['حالة_الدعوى'] === 'إلغاء القرار');
+        const cancelledDecisionCount = cancelledDecisionSessions.length;
         
-        return { totalAttended, withMinutes, withoutMinutes };
-    }, [attendedSessions]);
+        return { totalAttended, withMinutes, withoutMinutes, cancelledDecisionCount, cancelledDecisionSessions };
+    }, [attendedSessions, sessions]);
 
     const handleExportPDF = () => {
         window.print();
@@ -66,12 +68,16 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                             <p className="text-[10px] font-bold text-text/50 uppercase">جلسات بمحضر مسجل</p>
                             <p className="text-xl font-black text-green-600">{stats.withMinutes}</p>
                         </div>
+                        <div className="text-center">
+                            <p className="text-[10px] font-bold text-text/50 uppercase">حكم بإلغاء القرار</p>
+                            <p className="text-xl font-black text-green-600">{stats.cancelledDecisionCount}</p>
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Stats Cards - Hidden in Print */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:hidden">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 print:hidden">
                 <StatCard 
                     title="إجمالي الجلسات المحضورة" 
                     value={stats.totalAttended} 
@@ -89,6 +95,12 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                     value={stats.withoutMinutes} 
                     icon={<DocumentTextIcon className="w-8 h-8" />} 
                     color="amber"
+                />
+                <StatCard 
+                    title="حكم بإلغاء القرار" 
+                    value={stats.cancelledDecisionCount} 
+                    icon={<CheckCircleIcon className="w-8 h-8" />} 
+                    color="green"
                 />
             </div>
 
@@ -123,6 +135,46 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                                         <td className="p-4 text-sm font-bold text-dark">{session['المدعي']}</td>
                                         <td className="p-4 text-sm font-medium text-text/80 max-w-xs truncate">
                                             {session['محضر الجلسة'] || 'لا يوجد محضر'}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Cancelled Decisions Table - Visible in UI */}
+            <div className="bg-white rounded-[2rem] border border-border shadow-sm overflow-hidden print:hidden">
+                <div className="p-6 border-b border-border bg-green-50">
+                    <h3 className="text-xl font-bold text-green-700 flex items-center gap-2">
+                        <CheckCircleIcon className="w-6 h-6 text-green-600" />
+                        جدول صدور إلغاء القرار
+                    </h3>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-right">
+                        <thead>
+                            <tr className="bg-green-50/50">
+                                <th className="p-4 text-sm font-black text-dark border-b border-border">رقم الجلسة</th>
+                                <th className="p-4 text-sm font-black text-dark border-b border-border">رقم المخالفة</th>
+                                <th className="p-4 text-sm font-black text-dark border-b border-border">المدعي</th>
+                                <th className="p-4 text-sm font-black text-dark border-b border-border">المحكمة</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {stats.cancelledDecisionSessions.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="p-8 text-center text-text/50 font-bold">لا توجد قرارات ملغاة حالياً</td>
+                                </tr>
+                            ) : (
+                                stats.cancelledDecisionSessions.map((session) => (
+                                    <tr key={session.id} className="hover:bg-green-50/30 transition-colors border-b border-border last:border-0">
+                                        <td className="p-4 text-sm font-bold text-dark">#{session['رقم الدعوى']}</td>
+                                        <td className="p-4 text-sm font-bold text-text/70">{session['رقم المخالفة'] || '-'}</td>
+                                        <td className="p-4 text-sm font-bold text-dark">{session['المدعي']}</td>
+                                        <td className="p-4 text-sm font-medium text-text/80">
+                                            {session['المحكمة']}
                                         </td>
                                     </tr>
                                 ))
@@ -206,7 +258,8 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
 
             {/* Print Only Table */}
             <div className="hidden print:block">
-                <table className="w-full border-collapse border border-border text-right">
+                <h2 className="text-xl font-black text-dark mb-4 border-r-4 border-primary pr-4">جدول الجلسات المحضورة</h2>
+                <table className="w-full border-collapse border border-border text-right mb-12">
                     <thead>
                         <tr className="bg-primary/5">
                             <th className="border border-border p-4 text-sm font-black text-dark">رقم الجلسة</th>
@@ -228,6 +281,35 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                         ))}
                     </tbody>
                 </table>
+
+                {stats.cancelledDecisionSessions.length > 0 && (
+                    <>
+                        <h2 className="text-xl font-black text-dark mb-4 border-r-4 border-green-600 pr-4">جدول صدور إلغاء القرار</h2>
+                        <table className="w-full border-collapse border border-border text-right mb-12">
+                            <thead>
+                                <tr className="bg-green-50">
+                                    <th className="border border-border p-4 text-sm font-black text-dark">رقم الجلسة</th>
+                                    <th className="border border-border p-4 text-sm font-black text-dark">رقم المخالفة</th>
+                                    <th className="border border-border p-4 text-sm font-black text-dark">المدعي</th>
+                                    <th className="border border-border p-4 text-sm font-black text-dark">المحكمة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {stats.cancelledDecisionSessions.map((session) => (
+                                    <tr key={session.id}>
+                                        <td className="border border-border p-4 text-sm font-bold text-dark">#{session['رقم الدعوى']}</td>
+                                        <td className="border border-border p-4 text-sm font-bold text-dark">{session['رقم المخالفة'] || '-'}</td>
+                                        <td className="border border-border p-4 text-sm font-bold text-dark">{session['المدعي']}</td>
+                                        <td className="border border-border p-4 text-sm font-medium text-dark">
+                                            {session['المحكمة']}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </>
+                )}
+
                 <div className="mt-12 text-center text-xs text-text/40 mb-8">
                     تم استخراج هذا التقرير بتاريخ {new Date().toLocaleDateString('ar-SA')}
                 </div>

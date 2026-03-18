@@ -24,6 +24,7 @@ export interface CaseSession {
   "التاريخ الميلادي"?: string;
   "حضور الجلسة"?: string;
   "محضر الجلسة"?: string;
+  "حالة_الدعوى"?: string;
 }
 
 export interface SessionsByDate {
