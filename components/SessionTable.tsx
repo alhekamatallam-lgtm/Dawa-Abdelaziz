@@ -68,6 +68,7 @@ const SessionTable: React.FC<SessionTableProps> = ({
                         {showDateColumn && <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">التاريخ واليوم</th>}
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">التوقيت</th>
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">رقم الدعوى</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-indigo-700 uppercase tracking-wider">رقم الجلسة</th>
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider hidden sm:table-cell">رقم المخالفة</th>
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider hidden md:table-cell">المحكمة</th>
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">الدائرة</th>
@@ -114,6 +115,7 @@ const SessionTable: React.FC<SessionTableProps> = ({
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-text font-bold">{session['رقم الدعوى']}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-indigo-600 font-black">{session['رقم الجلسة'] || '-'}</td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-primary hidden sm:table-cell">{session['رقم المخالفة'] || '-'}</td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-text hidden md:table-cell max-w-[150px] truncate" title={session['المحكمة']}>{session['المحكمة']}</td>
                                     
@@ -165,6 +167,10 @@ const SessionTable: React.FC<SessionTableProps> = ({
                                         <td colSpan={showDateColumn ? 8 : 7} className="p-0">
                                             <div className={`px-4 py-4 bg-light/80 border-r-4 ${isNoShow ? 'border-red-500' : 'border-primary'} m-2 rounded-lg shadow-inner`}>
                                                 <div className="grid grid-cols-2 gap-4 text-xs">
+                                                    <div>
+                                                        <p className="font-bold text-text mb-1 text-[10px] opacity-60 uppercase">رقم الجلسة</p>
+                                                        <p className="text-indigo-600 font-black">{session['رقم الجلسة'] || 'لا يوجد'}</p>
+                                                    </div>
                                                     <div>
                                                         <p className="font-bold text-text mb-1 text-[10px] opacity-60 uppercase">رقم المخالفة</p>
                                                         <p className="text-primary font-bold">{session['رقم المخالفة'] || 'لا يوجد'}</p>

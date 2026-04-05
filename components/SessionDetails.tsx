@@ -11,6 +11,7 @@ interface SessionDetailsProps {
     onViewClick: (session: CaseSession) => void;
     showOnlyConflicts: boolean;
     onBack?: () => void;
+    searchQuery?: string;
 }
 
 const SessionDetails: React.FC<SessionDetailsProps> = ({ 
@@ -19,7 +20,8 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
     onUpdateClick, 
     onViewClick,
     showOnlyConflicts, 
-    onBack 
+    onBack,
+    searchQuery = ''
 }) => {
     const [selectedCircuit, setSelectedCircuit] = useState<string | null>(null);
     const [selectedPlaintiff, setSelectedPlaintiff] = useState<string | null>(null);
@@ -73,6 +75,18 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
 
     const sessionsToDisplay = useMemo(() => {
         let filtered = conflictFilteredSessions;
+        
+        // فلترة البحث
+        if (searchQuery.trim()) {
+            const query = searchQuery.trim().toLowerCase();
+            filtered = filtered.filter(s => {
+                const caseNum = String(s['رقم الدعوى'] || '').toLowerCase();
+                const sessionNum = String(s['رقم الجلسة'] || '').toLowerCase();
+                const violationNum = String(s['رقم المخالفة'] || '').toLowerCase();
+                return caseNum.includes(query) || sessionNum.includes(query) || violationNum.includes(query);
+            });
+        }
+
         if (selectedCircuit) {
             filtered = filtered.filter(s => ((s['الدائرة'] || '').trim() || 'غير محدد') === selectedCircuit);
         }

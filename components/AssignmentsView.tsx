@@ -102,6 +102,8 @@ interface AssignmentsViewProps {
     conflictingSessionIds: Set<number>;
     filters: AssignmentFilters;
     onClearFilters: () => void;
+    searchQuery: string;
+    onSearchChange: (query: string) => void;
 }
 
 const AssignmentsView: React.FC<AssignmentsViewProps> = ({ 
@@ -111,7 +113,9 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     onViewClick,
     conflictingSessionIds, 
     filters,
-    onClearFilters
+    onClearFilters,
+    searchQuery,
+    onSearchChange
 }) => {
     const { lawyerFilter, plaintiffFilter, specialFilter, onlyConflicts: showOnlyConflicts } = filters;
     
@@ -119,7 +123,6 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     const [selectedLawyers, setSelectedLawyers] = useState<string[]>([]);
     const [selectedDates, setSelectedDates] = useState<string[]>([]);
     const [selectedPlaintiffs, setSelectedPlaintiffs] = useState<string[]>([]);
-    const [searchQuery, setSearchQuery] = useState<string>('');
 
     useEffect(() => {
         setSelectedLawyers(lawyerFilter ? [lawyerFilter] : []);
@@ -189,7 +192,9 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     }, [sessions, lawyerFilter, plaintiffFilter, showOnlyConflicts, conflictingSessionIds]);
 
     const filteredSessions = useMemo(() => {
-        // Special filters override everything else and operate on the current session set
+        let filtered = sessions;
+
+        // 1. Special filters (duplicates, unlinked, correctly_linked)
         if (specialFilter) {
             const caseNumberCounts = new Map<string, number[]>();
             const violationNumberCounts = new Map<string, number[]>();
@@ -209,34 +214,38 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
             caseNumberCounts.forEach(ids => { if (ids.length > 1) ids.forEach(id => duplicateIds.add(id)); });
             violationNumberCounts.forEach(ids => { if (ids.length > 1) ids.forEach(id => duplicateIds.add(id)); });
 
-            if (specialFilter === 'duplicates') return sessions.filter(s => duplicateIds.has(s.id));
-            if (specialFilter === 'unlinked') return sessions.filter(s => (!!s['رقم الدعوى'] && !s['رقم المخالفة']) || (!s['رقم الدعوى'] && !!s['رقم المخالفة']));
-            if (specialFilter === 'correctly_linked') return sessions.filter(s => !!s['رقم الدعوى'] && !!s['رقم المخالفة'] && !duplicateIds.has(s.id));
+            if (specialFilter === 'duplicates') filtered = sessions.filter(s => duplicateIds.has(s.id));
+            else if (specialFilter === 'unlinked') filtered = sessions.filter(s => (!!s['رقم الدعوى'] && !s['رقم المخالفة']) || (!s['رقم الدعوى'] && !!s['رقم المخالفة']));
+            else if (specialFilter === 'correctly_linked') filtered = sessions.filter(s => !!s['رقم الدعوى'] && !!s['رقم المخالفة'] && !duplicateIds.has(s.id));
+        } else {
+            // Default: Hide unassigned sessions if no specific lawyer/plaintiff filter is active
+            if (!lawyerFilter && !plaintiffFilter) {
+                filtered = sessions.filter(s => s['التكليف'] && s['التكليف'].trim() !== '');
+            }
         }
         
-        let baseSessions = sessions;
-        if (!lawyerFilter && !plaintiffFilter) baseSessions = sessions.filter(s => s['التكليف'] && s['التكليف'].trim() !== '');
+        // 2. Search Query (Global filter)
+        if (searchQuery.trim()) {
+            const query = searchQuery.trim().toLowerCase();
+            filtered = filtered.filter(s => {
+                const caseNum = String(s['رقم الدعوى'] || '').toLowerCase();
+                const sessionNum = String(s['رقم الجلسة'] || '').toLowerCase();
+                const violationNum = String(s['رقم المخالفة'] || '').toLowerCase();
+                return caseNum.includes(query) || sessionNum.includes(query) || violationNum.includes(query);
+            });
+        }
         
-        let filtered = baseSessions;
-        
+        // 3. Other Filters (Circuits, Dates, Plaintiffs, Lawyers)
         if (selectedCircuits.length > 0) filtered = filtered.filter(s => selectedCircuits.includes((s['الدائرة'] || '').trim()));
         if (selectedDates.length > 0) filtered = filtered.filter(s => selectedDates.includes((s['التاريخ'] || '').trim()));
         if (selectedPlaintiffs.length > 0) filtered = filtered.filter(s => selectedPlaintiffs.includes((s['المدعي'] || '').trim()));
         if (selectedLawyers.length > 0) filtered = filtered.filter(s => selectedLawyers.includes((s['التكليف'] || '').trim()));
         
-        if (searchQuery.trim()) {
-            const query = searchQuery.trim().toLowerCase();
-            filtered = filtered.filter(s => {
-                const caseNum = String(s['رقم الدعوى'] || '').toLowerCase();
-                const violationNum = String(s['رقم المخالفة'] || '').toLowerCase();
-                return caseNum.includes(query) || violationNum.includes(query);
-            });
-        }
-        
+        // 4. Conflicts filter
         if (showOnlyConflicts) filtered = filtered.filter(s => entitySpecificConflictIds.has(s.id));
         
         return filtered;
-    }, [allSessions, sessions, filters, selectedCircuits, selectedDates, selectedPlaintiffs, selectedLawyers, searchQuery, entitySpecificConflictIds]);
+    }, [allSessions, sessions, filters, selectedCircuits, selectedDates, selectedPlaintiffs, selectedLawyers, searchQuery, entitySpecificConflictIds, specialFilter, lawyerFilter, plaintiffFilter, showOnlyConflicts]);
     
     const dynamicContent = useMemo(() => {
         if (specialFilter === 'correctly_linked') return { title: 'الجلسات الصحيحة', subtitle: 'عرض الجلسات المكتملة البيانات والفريدة.' };
@@ -252,7 +261,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         setSelectedLawyers([]);
         setSelectedDates([]);
         setSelectedPlaintiffs([]);
-        setSearchQuery('');
+        onSearchChange('');
         if (clearSpecial) onClearFilters();
     };
 
@@ -282,9 +291,9 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                 
                 {!specialFilter && <div className="flex flex-wrap items-end gap-3">
                     <div className="flex flex-col min-w-[200px] relative">
-                        <label className="text-[10px] font-bold text-text mb-1 mr-1">بحث برقم الدعوى / المخالفة</label>
+                        <label className="text-[10px] font-bold text-text mb-1 mr-1">بحث برقم الدعوى / الجلسة / المخالفة</label>
                         <div className="relative">
-                            <input type="text" placeholder="ادخل الرقم هنا..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-light border border-border rounded-lg pl-3 pr-10 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"/>
+                            <input type="text" placeholder="ادخل الرقم هنا..." value={searchQuery} onChange={(e) => onSearchChange(e.target.value)} className="w-full bg-light border border-border rounded-lg pl-3 pr-10 py-2 text-xs font-medium text-dark focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"/>
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-primary opacity-50"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
                         </div>
                     </div>

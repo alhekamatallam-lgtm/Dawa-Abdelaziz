@@ -50,6 +50,7 @@ const App: React.FC = () => {
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState<boolean>(false);
+    const [searchQuery, setSearchQuery] = useState<string>('');
     const [sessionToUpdate, setSessionToUpdate] = useState<CaseSession | null>(null);
     const [sessionToView, setSessionToView] = useState<CaseSession | null>(null);
     const [assignmentFilters, setAssignmentFilters] = useState<AssignmentFilters>({});
@@ -261,6 +262,8 @@ const App: React.FC = () => {
                                 showOnlyConflictsInDetails={false}
                                 showOnlyUpcomingDays={showOnlyUpcomingDays}
                                 onShowOnlyUpcomingDaysToggle={() => setShowOnlyUpcomingDays(!showOnlyUpcomingDays)}
+                                searchQuery={searchQuery}
+                                onSearchChange={setSearchQuery}
                             />
                         </div>
                         <div className="lg:col-span-8 min-h-[650px] bg-white rounded-[2.5rem] border border-border flex flex-col p-10 shadow-sm overflow-hidden">
@@ -271,6 +274,7 @@ const App: React.FC = () => {
                                 onViewClick={(s) => { setSessionToView(s); setIsViewModalOpen(true); }}
                                 showOnlyConflicts={false}
                                 onBack={() => setSelectedDate(null)}
+                                searchQuery={searchQuery}
                             />
                         </div>
                     </div>
@@ -295,6 +299,8 @@ const App: React.FC = () => {
                                 conflictingSessionIds={new Set()}
                                 filters={assignmentFilters}
                                 onClearFilters={() => setAssignmentFilters({})}
+                                searchQuery={searchQuery}
+                                onSearchChange={setSearchQuery}
                             />
                         )}
                         {view === 'lawyer_report' && <LawyerReport sessions={filteredSessions} onLawyerClick={(lawyer, conflicts) => navigateToAssignments({ lawyer, onlyConflicts: conflicts })} />}

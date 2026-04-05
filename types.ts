@@ -2,6 +2,7 @@
 export interface CaseSession {
   id: number;
   "رقم الدعوى": number;
+  "رقم الجلسة"?: string | number;
   "رقم المخالفة"?: string | number;
   "المحكمة": string;
   "الدائرة": string;

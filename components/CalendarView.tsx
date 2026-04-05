@@ -20,6 +20,8 @@ interface CalendarViewProps {
     showOnlyConflictsInDetails: boolean;
     showOnlyUpcomingDays: boolean;
     onShowOnlyUpcomingDaysToggle: () => void;
+    searchQuery: string;
+    onSearchChange: (query: string) => void;
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({ 
@@ -29,9 +31,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     onShowAllConflictsToggle, 
     isShowingAllConflicts, 
     showOnlyUpcomingDays,
-    onShowOnlyUpcomingDaysToggle
+    onShowOnlyUpcomingDaysToggle,
+    searchQuery,
+    onSearchChange
 }) => {
-    const [searchQuery, setSearchQuery] = useState('');
 
     const sortedData = [...calendarData].sort((a, b) => {
         const parse = (d: string) => {
@@ -80,8 +83,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({
             data = data.filter(day => {
                 return day.sessions.some(s => {
                     const caseNum = String(s['رقم الدعوى'] || '').toLowerCase();
+                    const sessionNum = String(s['رقم الجلسة'] || '').toLowerCase();
                     const violationNum = String(s['رقم المخالفة'] || '').toLowerCase();
-                    return caseNum.includes(query) || violationNum.includes(query);
+                    return caseNum.includes(query) || sessionNum.includes(query) || violationNum.includes(query);
                 });
             });
         }
@@ -101,9 +105,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                 <div className="relative">
                     <input 
                         type="text" 
-                        placeholder="بحث برقم الدعوى / المخالفة..." 
+                        placeholder="بحث برقم الدعوى / الجلسة / المخالفة..." 
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => onSearchChange(e.target.value)}
                         className="w-full bg-[#f7f5f2] border border-border rounded-2xl py-3 pr-10 pl-4 text-xs font-bold text-dark focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-text/40"
                     />
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-primary opacity-50">
@@ -186,7 +190,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                             </svg>
                         </div>
                         <p className="font-bold text-lg text-dark/40">لم نجد أي جلسات تطابق بحثك</p>
-                        <button onClick={() => setSearchQuery('')} className="mt-4 text-xs font-bold text-primary hover:underline">إلغاء البحث</button>
+                        <button onClick={() => onSearchChange('')} className="mt-4 text-xs font-bold text-primary hover:underline">إلغاء البحث</button>
                     </div>
                 )}
             </div>
