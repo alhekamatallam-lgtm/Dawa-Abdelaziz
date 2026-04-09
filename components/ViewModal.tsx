@@ -18,6 +18,7 @@ const ViewModal: React.FC<ViewModalProps> = ({ session, onClose }) => {
         { label: 'الدائرة', value: session['الدائرة'] || 'غير محددة' },
         { label: 'نوع الموعد', value: session['نوع الموعد'] },
         { label: 'وقت الموعد', value: `${session['وقت الموعد']} ${session['ص- م']}` },
+        { label: 'إضافة السوابق القضائية', value: session['اضافة_السوابق_القضائية'] === 'نعم' ? 'نعم' : 'لا' },
     ];
 
     const attendanceStatus = session['حضور الجلسة'];

@@ -26,6 +26,7 @@ export interface CaseSession {
   "حضور الجلسة"?: string;
   "محضر الجلسة"?: string;
   "حالة_الدعوى"?: string;
+  "اضافة_السوابق_القضائية"?: string;
 }
 
 export interface SessionsByDate {

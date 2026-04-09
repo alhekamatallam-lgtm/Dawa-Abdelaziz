@@ -82,13 +82,14 @@ const SessionTable: React.FC<SessionTableProps> = ({
                     {sortedSessions.map((session) => {
                         const isConflict = conflictingSessionIds?.has(session.id);
                         const isNoShow = session['حضور الجلسة'] === 'لم أحضر';
+                        const isPrecedent = session['اضافة_السوابق_القضائية'] === 'نعم';
                         const isExpanded = expandedRowId === session.id;
                         const circuitName = (session['الدائرة'] || '').trim();
 
                         return (
                             <React.Fragment key={session.id}>
                                 <tr 
-                                    className={`${isNoShow ? 'bg-red-50/80' : isConflict ? 'bg-amber-50/60' : 'bg-white'} hover:${isNoShow ? 'bg-red-100/90' : isConflict ? 'bg-amber-100/80' : 'bg-light'} transition-colors cursor-pointer md:cursor-default relative`}
+                                    className={`${isPrecedent ? 'bg-green-50/80' : isNoShow ? 'bg-red-50/80' : isConflict ? 'bg-amber-50/60' : 'bg-white'} hover:${isPrecedent ? 'bg-green-100/90' : isNoShow ? 'bg-red-100/90' : isConflict ? 'bg-amber-100/80' : 'bg-light'} transition-colors cursor-pointer md:cursor-default relative`}
                                     onClick={() => handleRowToggle(session.id)}
                                 >
                                     {showDateColumn && (
@@ -163,9 +164,9 @@ const SessionTable: React.FC<SessionTableProps> = ({
                                     </td>
                                 </tr>
                                 {isExpanded && (
-                                    <tr className={`md:hidden ${isNoShow ? 'bg-red-50' : isConflict ? 'bg-amber-50' : 'bg-white'}`}>
+                                    <tr className={`md:hidden ${isPrecedent ? 'bg-green-50' : isNoShow ? 'bg-red-50' : isConflict ? 'bg-amber-50' : 'bg-white'}`}>
                                         <td colSpan={showDateColumn ? 8 : 7} className="p-0">
-                                            <div className={`px-4 py-4 bg-light/80 border-r-4 ${isNoShow ? 'border-red-500' : 'border-primary'} m-2 rounded-lg shadow-inner`}>
+                                            <div className={`px-4 py-4 bg-light/80 border-r-4 ${isPrecedent ? 'border-green-500' : isNoShow ? 'border-red-500' : 'border-primary'} m-2 rounded-lg shadow-inner`}>
                                                 <div className="grid grid-cols-2 gap-4 text-xs">
                                                     <div>
                                                         <p className="font-bold text-text mb-1 text-[10px] opacity-60 uppercase">رقم الجلسة</p>

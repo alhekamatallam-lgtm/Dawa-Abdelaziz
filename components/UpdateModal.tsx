@@ -12,6 +12,7 @@ const UpdateModal: React.FC<UpdateModalProps> = ({ session, onClose, onUpdate })
     const [assignment, setAssignment] = useState(session['التكليف'] || '');
     const [attendance, setAttendance] = useState(session['حضور الجلسة'] || '');
     const [minutes, setMinutes] = useState(session['محضر الجلسة'] || '');
+    const [addPrecedent, setAddPrecedent] = useState(session['اضافة_السوابق_القضائية'] === 'نعم');
     const [isUpdating, setIsUpdating] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +30,8 @@ const UpdateModal: React.FC<UpdateModalProps> = ({ session, onClose, onUpdate })
             await onUpdate({
                 "التكليف": assignment,
                 "حضور الجلسة": attendance,
-                "محضر الجلسة": attendance === 'حضرت' ? minutes : ''
+                "محضر الجلسة": attendance === 'حضرت' ? minutes : '',
+                "اضافة_السوابق_القضائية": addPrecedent ? 'نعم' : 'لا'
             });
         } catch (err) {
             setError('حدث خطأ أثناء التحديث.');
@@ -61,6 +63,16 @@ const UpdateModal: React.FC<UpdateModalProps> = ({ session, onClose, onUpdate })
                             <textarea value={minutes} onChange={e => setMinutes(e.target.value)} className="w-full p-2 border rounded-lg h-24" placeholder="ماذا حدث في الجلسة؟" required />
                         </div>
                     )}
+                    <div className="flex items-center gap-2 pt-2">
+                        <input 
+                            type="checkbox" 
+                            id="addPrecedent" 
+                            checked={addPrecedent} 
+                            onChange={e => setAddPrecedent(e.target.checked)}
+                            className="w-5 h-5 rounded border-border text-primary focus:ring-primary cursor-pointer accent-primary"
+                        />
+                        <label htmlFor="addPrecedent" className="text-sm font-bold cursor-pointer select-none">إضافة السوابق القضائية</label>
+                    </div>
                     {error && <p className="text-red-500 text-xs font-bold">{error}</p>}
                     <div className="flex gap-2 pt-4">
                         <button type="submit" disabled={isUpdating} className="flex-1 bg-primary text-white p-2 rounded-lg font-bold">{isUpdating ? 'جاري الحفظ...' : 'حفظ'}</button>
