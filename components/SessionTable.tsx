@@ -65,7 +65,7 @@ const SessionTable: React.FC<SessionTableProps> = ({
             <table className="min-w-full divide-y divide-border text-right">
                 <thead className="bg-light/50">
                     <tr>
-                        {showDateColumn && <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">التاريخ واليوم</th>}
+                        {showDateColumn && <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">التاريخ</th>}
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">التوقيت</th>
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">رقم الدعوى</th>
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-indigo-700 uppercase tracking-wider">رقم الجلسة</th>
@@ -94,10 +94,7 @@ const SessionTable: React.FC<SessionTableProps> = ({
                                 >
                                     {showDateColumn && (
                                         <td className="px-4 py-3 whitespace-nowrap">
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-bold text-primary">{session['التاريخ']}</span>
-                                                <span className="text-[10px] text-text opacity-70">{session['اليوم']}</span>
-                                            </div>
+                                            <span className="text-sm font-bold text-primary">{session['التاريخ']}</span>
                                         </td>
                                     )}
                                     

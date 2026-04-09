@@ -35,9 +35,20 @@ const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({ label, options, s
         onChange(newSelectedOptions);
     };
 
+    const isAllSelected = options.length > 0 && selectedOptions.length === options.length;
+
+    const handleSelectAll = () => {
+        if (isAllSelected) {
+            onChange([]);
+        } else {
+            onChange([...options]);
+        }
+    };
+
     const displayValue = () => {
         if (disabled && selectedOptions.length > 0) return selectedOptions[0];
-        if (selectedOptions.length === 0) return `كل ${label}`;
+        if (selectedOptions.length === 0) return `لم يتم اختيار أي ${label}`;
+        if (isAllSelected) return `كل ${label}`;
         if (selectedOptions.length === 1) return selectedOptions[0];
         return `${selectedOptions.length} اختيارات`;
     };
@@ -59,6 +70,17 @@ const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({ label, options, s
             {isOpen && (
                 <div className="absolute top-full mt-2 w-full bg-white border border-border rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
                     <ul className="p-2 space-y-1">
+                        <li className="border-b border-border mb-1 pb-1">
+                            <label className="flex items-center gap-2 p-2 rounded-md hover:bg-light cursor-pointer font-bold text-primary">
+                                <input
+                                    type="checkbox"
+                                    checked={isAllSelected}
+                                    onChange={handleSelectAll}
+                                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer accent-primary"
+                                />
+                                <span className="text-xs">الكل</span>
+                            </label>
+                        </li>
                         {options.map(option => (
                             <li key={option}>
                                 <label className="flex items-center gap-2 p-2 rounded-md hover:bg-light cursor-pointer">
@@ -119,17 +141,43 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
 }) => {
     const { lawyerFilter, plaintiffFilter, specialFilter, onlyConflicts: showOnlyConflicts } = filters;
     
-    const [selectedCircuits, setSelectedCircuits] = useState<string[]>([]);
-    const [selectedLawyers, setSelectedLawyers] = useState<string[]>([]);
-    const [selectedDates, setSelectedDates] = useState<string[]>([]);
-    const [selectedPlaintiffs, setSelectedPlaintiffs] = useState<string[]>([]);
+    const [pendingCircuits, setPendingCircuits] = useState<string[]>([]);
+    const [pendingLawyers, setPendingLawyers] = useState<string[]>([]);
+    const [pendingDates, setPendingDates] = useState<string[]>([]);
+    const [pendingPlaintiffs, setPendingPlaintiffs] = useState<string[]>([]);
 
+    const [appliedCircuits, setAppliedCircuits] = useState<string[]>([]);
+    const [appliedLawyers, setAppliedLawyers] = useState<string[]>([]);
+    const [appliedDates, setAppliedDates] = useState<string[]>([]);
+    const [appliedPlaintiffs, setAppliedPlaintiffs] = useState<string[]>([]);
+
+    // Removed automatic "Select All" initialization to keep table empty by default
+    // as per user request.
+    
     useEffect(() => {
-        setSelectedLawyers(lawyerFilter ? [lawyerFilter] : []);
+        const lawyers = lawyerFilter ? [lawyerFilter] : [];
+        setPendingLawyers(lawyers);
+        setAppliedLawyers(lawyers);
+        // Reset other local filters when lawyer changes
+        setPendingCircuits([]);
+        setAppliedCircuits([]);
+        setPendingDates([]);
+        setAppliedDates([]);
+        setPendingPlaintiffs([]);
+        setAppliedPlaintiffs([]);
     }, [lawyerFilter]);
 
     useEffect(() => {
-        setSelectedPlaintiffs(plaintiffFilter ? [plaintiffFilter] : []);
+        const plaintiffs = plaintiffFilter ? [plaintiffFilter] : [];
+        setPendingPlaintiffs(plaintiffs);
+        setAppliedPlaintiffs(plaintiffs);
+        // Reset other local filters when plaintiff changes
+        setPendingCircuits([]);
+        setAppliedCircuits([]);
+        setPendingDates([]);
+        setAppliedDates([]);
+        setPendingLawyers([]);
+        setAppliedLawyers([]);
     }, [plaintiffFilter]);
     
     useEffect(() => {
@@ -138,6 +186,20 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
              handleResetFilters(false); // don't clear the special filter itself
         }
     }, [specialFilter]);
+
+    const hasPendingChanges = useMemo(() => {
+        return JSON.stringify(pendingCircuits) !== JSON.stringify(appliedCircuits) ||
+               JSON.stringify(pendingLawyers) !== JSON.stringify(appliedLawyers) ||
+               JSON.stringify(pendingDates) !== JSON.stringify(appliedDates) ||
+               JSON.stringify(pendingPlaintiffs) !== JSON.stringify(appliedPlaintiffs);
+    }, [pendingCircuits, appliedCircuits, pendingLawyers, appliedLawyers, pendingDates, appliedDates, pendingPlaintiffs, appliedPlaintiffs]);
+
+    const handleApplyFilters = () => {
+        setAppliedCircuits([...pendingCircuits]);
+        setAppliedLawyers([...pendingLawyers]);
+        setAppliedDates([...pendingDates]);
+        setAppliedPlaintiffs([...pendingPlaintiffs]);
+    };
 
     const uniqueCircuits = useMemo(() => {
         const circuits = sessions.map(s => (s['الدائرة'] || '').trim()).filter(Boolean);
@@ -150,7 +212,8 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     }, [sessions]);
 
     const uniqueDates = useMemo(() => {
-        const dates = sessions.map(s => (s['التاريخ'] || '').trim()).filter(Boolean);
+        const normalize = (d: string) => (d || '').replace(/[^\d-]/g, '').trim();
+        const dates = sessions.map(s => normalize(s['التاريخ'])).filter(Boolean);
         const uniqueDateSet = new Set(dates);
         
         const parseDate = (dateStr: string) => {
@@ -192,6 +255,18 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     }, [sessions, lawyerFilter, plaintiffFilter, showOnlyConflicts, conflictingSessionIds]);
 
     const filteredSessions = useMemo(() => {
+        // If no filters are applied and no search/special filter, return empty array as requested
+        const hasActiveFilters = appliedCircuits.length > 0 || 
+                                appliedDates.length > 0 || 
+                                appliedPlaintiffs.length > 0 || 
+                                appliedLawyers.length > 0 || 
+                                searchQuery.trim() !== '' || 
+                                !!specialFilter || 
+                                !!lawyerFilter || 
+                                !!plaintiffFilter;
+
+        if (!hasActiveFilters) return [];
+
         let filtered = sessions;
 
         // 1. Special filters (duplicates, unlinked, correctly_linked)
@@ -236,16 +311,28 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         }
         
         // 3. Other Filters (Circuits, Dates, Plaintiffs, Lawyers)
-        if (selectedCircuits.length > 0) filtered = filtered.filter(s => selectedCircuits.includes((s['الدائرة'] || '').trim()));
-        if (selectedDates.length > 0) filtered = filtered.filter(s => selectedDates.includes((s['التاريخ'] || '').trim()));
-        if (selectedPlaintiffs.length > 0) filtered = filtered.filter(s => selectedPlaintiffs.includes((s['المدعي'] || '').trim()));
-        if (selectedLawyers.length > 0) filtered = filtered.filter(s => selectedLawyers.includes((s['التكليف'] || '').trim()));
+        if (appliedCircuits.length > 0) {
+            filtered = filtered.filter(s => appliedCircuits.includes((s['الدائرة'] || '').trim()));
+        }
+        if (appliedDates.length > 0) {
+            const normalize = (d: string) => (d || '').replace(/[^\d-]/g, '').trim();
+            filtered = filtered.filter(s => {
+                const sessionDate = normalize(s['التاريخ']);
+                return appliedDates.some(d => normalize(d) === sessionDate);
+            });
+        }
+        if (appliedPlaintiffs.length > 0) {
+            filtered = filtered.filter(s => appliedPlaintiffs.includes((s['المدعي'] || '').trim()));
+        }
+        if (appliedLawyers.length > 0) {
+            filtered = filtered.filter(s => appliedLawyers.includes((s['التكليف'] || '').trim()));
+        }
         
         // 4. Conflicts filter
         if (showOnlyConflicts) filtered = filtered.filter(s => entitySpecificConflictIds.has(s.id));
         
         return filtered;
-    }, [allSessions, sessions, filters, selectedCircuits, selectedDates, selectedPlaintiffs, selectedLawyers, searchQuery, entitySpecificConflictIds, specialFilter, lawyerFilter, plaintiffFilter, showOnlyConflicts]);
+    }, [allSessions, sessions, filters, appliedCircuits, appliedDates, appliedPlaintiffs, appliedLawyers, searchQuery, entitySpecificConflictIds, specialFilter, lawyerFilter, plaintiffFilter, showOnlyConflicts]);
     
     const dynamicContent = useMemo(() => {
         if (specialFilter === 'correctly_linked') return { title: 'الجلسات الصحيحة', subtitle: 'عرض الجلسات المكتملة البيانات والفريدة.' };
@@ -257,10 +344,14 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     }, [filters]);
 
     const handleResetFilters = (clearSpecial = true) => {
-        setSelectedCircuits([]);
-        setSelectedLawyers([]);
-        setSelectedDates([]);
-        setSelectedPlaintiffs([]);
+        setPendingCircuits([]);
+        setAppliedCircuits([]);
+        setPendingLawyers([]);
+        setAppliedLawyers([]);
+        setPendingDates([]);
+        setAppliedDates([]);
+        setPendingPlaintiffs([]);
+        setAppliedPlaintiffs([]);
         onSearchChange('');
         if (clearSpecial) onClearFilters();
     };
@@ -297,12 +388,25 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-primary opacity-50"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
                         </div>
                     </div>
-                    <MultiSelectFilter label="التواريخ" options={uniqueDates} selectedOptions={selectedDates} onChange={setSelectedDates} />
-                    <MultiSelectFilter label="الدوائر" options={uniqueCircuits} selectedOptions={selectedCircuits} onChange={setSelectedCircuits} />
-                    <MultiSelectFilter label="المدعين" options={uniquePlaintiffs} selectedOptions={selectedPlaintiffs} onChange={setSelectedPlaintiffs} disabled={!!plaintiffFilter} />
-                    <MultiSelectFilter label="المكلفين" options={uniqueLawyers} selectedOptions={selectedLawyers} onChange={setSelectedLawyers} disabled={!!lawyerFilter} />
+                    <MultiSelectFilter label="التواريخ" options={uniqueDates} selectedOptions={pendingDates} onChange={setPendingDates} />
+                    <MultiSelectFilter label="الدوائر" options={uniqueCircuits} selectedOptions={pendingCircuits} onChange={setPendingCircuits} />
+                    <MultiSelectFilter label="المدعين" options={uniquePlaintiffs} selectedOptions={pendingPlaintiffs} onChange={setPendingPlaintiffs} disabled={!!plaintiffFilter} />
+                    <MultiSelectFilter label="المكلفين" options={uniqueLawyers} selectedOptions={pendingLawyers} onChange={setPendingLawyers} disabled={!!lawyerFilter} />
 
-                    <button onClick={() => handleResetFilters()} className="p-2.5 text-primary hover:bg-primary/5 rounded-lg transition-colors group border border-border bg-white" title="إعادة ضبط الفلاتر"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg></button>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={handleApplyFilters}
+                            disabled={!hasPendingChanges}
+                            className={`px-6 py-2.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 shadow-sm ${
+                                hasPendingChanges 
+                                ? 'bg-primary text-white hover:bg-dark' 
+                                : 'bg-light text-text opacity-50 cursor-not-allowed border border-border'
+                            }`}
+                        >
+                            تطبيق
+                        </button>
+                        <button onClick={() => handleResetFilters()} className="p-2.5 text-primary hover:bg-primary/5 rounded-lg transition-colors group border border-border bg-white" title="إعادة ضبط الفلاتر"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg></button>
+                    </div>
                 </div>}
             </div>
 
