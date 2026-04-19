@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import type { CaseSession } from '../types';
 import StatCard from './StatCard';
-import { CheckCircleIcon, DocumentTextIcon, CalendarIcon, ClockIcon, UserIcon, ArrowRightIcon, ChevronDownIcon } from './icons';
+import { CheckCircleIcon, DocumentTextIcon, CalendarIcon, ClockIcon, UserIcon, ArrowRightIcon, ChevronDownIcon, PrinterIcon } from './icons';
 
 interface AttendanceReportProps {
     sessions: CaseSession[];
@@ -12,6 +12,7 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
     const [isSummaryOpen, setIsSummaryOpen] = useState(false);
     const [isCancelledOpen, setIsCancelledOpen] = useState(false);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+    const [printMode, setPrintMode] = useState<'all' | 'annulment'>('all');
 
     const attendedSessions = useMemo(() => {
         return sessions.filter(s => s['حضور الجلسة'] === 'حضرت');
@@ -28,7 +29,18 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
     }, [attendedSessions, sessions]);
 
     const handleExportPDF = () => {
-        window.print();
+        setPrintMode('all');
+        setTimeout(() => {
+            window.print();
+        }, 100);
+    };
+
+    const handlePrintAnnulment = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setPrintMode('annulment');
+        setTimeout(() => {
+            window.print();
+        }, 100);
     };
 
     return (
@@ -53,31 +65,120 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                 </button>
             </div>
 
-            {/* Print Only Header (Official Cliché) */}
-            <div className="hidden print:block mb-8">
+            {/* Print Only Section */}
+            <div className="hidden print:block">
                 <img 
                     src="https://russeellcloud.k.frappe.cloud/files/header.jpg" 
                     alt="Official Header" 
                     className="w-full h-auto"
                     referrerPolicy="no-referrer"
                 />
-                <div className="text-center mt-6 space-y-2 border-b-2 border-primary pb-6">
-                    <h1 className="text-3xl font-black text-dark">تقرير حضور الجلسات</h1>
-                    <div className="flex justify-center gap-12 mt-4">
-                        <div className="text-center">
-                            <p className="text-[10px] font-bold text-text/50 uppercase">إجمالي الجلسات المحضورة</p>
-                            <p className="text-xl font-black text-primary">{stats.totalAttended}</p>
+                
+                {printMode === 'all' ? (
+                    <>
+                        <div className="text-center mt-6 space-y-2 border-b-2 border-primary pb-6">
+                            <h1 className="text-3xl font-black text-dark">تقرير حضور الجلسات</h1>
+                            <div className="flex justify-center gap-12 mt-4">
+                                <div className="text-center">
+                                    <p className="text-[10px] font-bold text-text/50 uppercase">إجمالي الجلسات المحضورة</p>
+                                    <p className="text-xl font-black text-primary">{stats.totalAttended}</p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-[10px] font-bold text-text/50 uppercase">جلسات بمحضر مسجل</p>
+                                    <p className="text-xl font-black text-green-600">{stats.withMinutes}</p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-[10px] font-bold text-text/50 uppercase">حكما بإلغاء القرار</p>
+                                    <p className="text-xl font-black text-green-600">{stats.cancelledDecisionCount}</p>
+                                </div>
+                            </div>
                         </div>
-                        <div className="text-center">
-                            <p className="text-[10px] font-bold text-text/50 uppercase">جلسات بمحضر مسجل</p>
-                            <p className="text-xl font-black text-green-600">{stats.withMinutes}</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-[10px] font-bold text-text/50 uppercase">حكم بإلغاء القرار</p>
-                            <p className="text-xl font-black text-green-600">{stats.cancelledDecisionCount}</p>
-                        </div>
+
+                        <h2 className="text-xl font-black text-dark my-6 border-r-4 border-primary pr-4">جدول الجلسات المحضورة</h2>
+                        <table className="w-full border-collapse border border-border text-right mb-12">
+                            <thead>
+                                <tr className="bg-primary/5">
+                                    <th className="border border-border p-4 text-sm font-black text-dark">رقم الجلسة</th>
+                                    <th className="border border-border p-4 text-sm font-black text-dark">رقم المخالفة</th>
+                                    <th className="border border-border p-4 text-sm font-black text-dark">المدعي</th>
+                                    <th className="border border-border p-4 text-sm font-black text-dark">محضر الجلسة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {attendedSessions.map((session) => (
+                                    <tr key={session.id} className="print:break-inside-avoid">
+                                        <td className="border border-border p-4 text-sm font-bold text-dark">#{session['رقم الدعوى']}</td>
+                                        <td className="border border-border p-4 text-sm font-bold text-dark">{session['رقم المخالفة'] || '-'}</td>
+                                        <td className="border border-border p-4 text-sm font-bold text-dark">{session['المدعي']}</td>
+                                        <td className="border border-border p-4 text-sm font-medium text-dark leading-relaxed">
+                                            {session['محضر الجلسة'] || 'لا يوجد محضر'}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </>
+                ) : (
+                    <div className="text-center mt-6 space-y-2 border-b-2 border-green-600 pb-6">
+                        <h1 className="text-3xl font-black text-dark">تقرير أحكام إلغاء القرار</h1>
+                        <p className="text-green-700 font-bold">حصر الأحكام النهائية الصادرة بإلغاء القرارات</p>
                     </div>
+                )}
+
+                {stats.cancelledDecisionSessions.length > 0 && (
+                    <div className={`${printMode === 'all' ? 'break-before-page mt-12' : 'mt-8'}`}>
+                        {/* Verdict Card for Print */}
+                        <div className="mb-8 p-10 border-4 border-green-600 rounded-[3rem] bg-green-50/30 flex items-center justify-between shadow-sm">
+                            <div className="flex items-center gap-8">
+                                <div className="p-5 bg-white rounded-[2rem] shadow-md border border-green-200">
+                                    <CheckCircleIcon className="w-14 h-14 text-green-600" />
+                                </div>
+                                <div>
+                                    <h2 className="text-4xl font-black text-green-900 tracking-tight">حكم بإلغاء القرار</h2>
+                                    <p className="text-lg font-bold text-green-700 mt-2">توثيق الأحكام الصادرة بإلغاء القرارات المطعون عليها</p>
+                                </div>
+                            </div>
+                            <div className="text-left border-r-2 border-green-600/20 pr-8">
+                                <p className="text-xs font-black text-green-600 uppercase tracking-widest mb-1">العدد الإجمالي</p>
+                                <p className="text-5xl font-black text-green-900">{stats.cancelledDecisionCount}</p>
+                            </div>
+                        </div>
+
+                        <h2 className="text-xl font-black text-dark mb-4 border-r-4 border-green-600 pr-4">جدول صدور إلغاء القرار</h2>
+                        <table className="w-full border-collapse border border-border text-right mb-12">
+                            <thead>
+                                <tr className="bg-green-50">
+                                    <th className="border border-border p-4 text-sm font-black text-dark">رقم الجلسة</th>
+                                    <th className="border border-border p-4 text-sm font-black text-dark">رقم المخالفة</th>
+                                    <th className="border border-border p-4 text-sm font-black text-dark">المدعي</th>
+                                    <th className="border border-border p-4 text-sm font-black text-dark">المحكمة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {stats.cancelledDecisionSessions.map((session) => (
+                                    <tr key={session.id} className="print:break-inside-avoid">
+                                        <td className="border border-border p-4 text-sm font-bold text-dark">#{session['رقم الدعوى']}</td>
+                                        <td className="border border-border p-4 text-sm font-bold text-dark">{session['رقم المخالفة'] || '-'}</td>
+                                        <td className="border border-border p-4 text-sm font-bold text-dark">{session['المدعي']}</td>
+                                        <td className="border border-border p-4 text-sm font-medium text-dark italic">
+                                            {session['المحكمة']}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+
+                <div className="mt-12 text-center text-xs text-text/40 mb-8 italic">
+                    تم استخراج هذا التقرير ({printMode === 'all' ? 'شامل' : 'أحكام إلغاء القرار فقط'}) بتاريخ {new Date().toLocaleDateString('ar-SA')}
                 </div>
+                <img 
+                    src="https://russeellcloud.k.frappe.cloud/files/footer.jpg" 
+                    alt="Official Footer" 
+                    className="w-full h-auto mt-auto"
+                    referrerPolicy="no-referrer"
+                />
             </div>
 
             {/* Stats Cards - Hidden in Print */}
@@ -160,13 +261,46 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                     onClick={() => setIsCancelledOpen(!isCancelledOpen)}
                     className="w-full p-6 border-b border-border bg-green-50 flex items-center justify-between hover:bg-green-100/50 transition-colors"
                 >
-                    <h3 className="text-xl font-bold text-green-700 flex items-center gap-2">
-                        <CheckCircleIcon className="w-6 h-6 text-green-600" />
-                        جدول صدور إلغاء القرار
-                    </h3>
-                    <ChevronDownIcon className={`w-6 h-6 text-green-700/40 transition-transform duration-300 ${isCancelledOpen ? 'rotate-180' : ''}`} />
+                    <div className="flex items-center gap-4 flex-1">
+                        <h3 className="text-xl font-bold text-green-700 flex items-center gap-2">
+                            <CheckCircleIcon className="w-6 h-6 text-green-600" />
+                            جدول صدور إلغاء القرار
+                        </h3>
+                        <span className="px-2 py-0.5 bg-green-200 text-green-800 text-[10px] font-black rounded-md">جديد</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={handlePrintAnnulment}
+                            className="p-2 bg-white text-green-700 rounded-xl border border-green-200 hover:bg-green-100 transition-colors shadow-sm flex items-center gap-2"
+                            title="تصدير الأحكام فقط"
+                        >
+                            <PrinterIcon className="w-5 h-5" />
+                            <span className="text-xs font-bold hidden md:inline">تصدير الأحكام</span>
+                        </button>
+                        <div className="p-2 bg-green-100 rounded-xl">
+                            <ChevronDownIcon className={`w-6 h-6 text-green-700/60 transition-transform duration-300 ${isCancelledOpen ? 'rotate-180' : ''}`} />
+                        </div>
+                    </div>
                 </button>
                 <div className={`transition-all duration-300 overflow-hidden ${isCancelledOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <div className="p-6 pb-0">
+                        {/* UI Card for Annulment */}
+                        <div className="mb-6 p-6 border-2 border-green-600 rounded-3xl bg-green-50/50 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-white rounded-2xl shadow-sm border border-green-100">
+                                    <CheckCircleIcon className="w-8 h-8 text-green-600" />
+                                </div>
+                                <div>
+                                    <h4 className="text-xl font-black text-green-900 leading-none">حكم بإلغاء القرار</h4>
+                                    <p className="text-xs font-bold text-green-700 mt-1 opacity-70">توثيق الأحكام الصادرة بالإلغاء</p>
+                                </div>
+                            </div>
+                            <div className="text-left">
+                                <p className="text-[10px] font-black text-green-600 uppercase mb-1">العدد</p>
+                                <p className="text-3xl font-black text-green-900">{stats.cancelledDecisionCount}</p>
+                            </div>
+                        </div>
+                    </div>
                     <div className="overflow-x-auto">
                         <table className="w-full border-collapse text-right">
                             <thead>
@@ -282,70 +416,7 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                 </div>
             </div>
 
-            {/* Print Only Table */}
-            <div className="hidden print:block">
-                <h2 className="text-xl font-black text-dark mb-4 border-r-4 border-primary pr-4">جدول الجلسات المحضورة</h2>
-                <table className="w-full border-collapse border border-border text-right mb-12">
-                    <thead>
-                        <tr className="bg-primary/5">
-                            <th className="border border-border p-4 text-sm font-black text-dark">رقم الجلسة</th>
-                            <th className="border border-border p-4 text-sm font-black text-dark">رقم المخالفة</th>
-                            <th className="border border-border p-4 text-sm font-black text-dark">المدعي</th>
-                            <th className="border border-border p-4 text-sm font-black text-dark">محضر الجلسة</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {attendedSessions.map((session) => (
-                            <tr key={session.id}>
-                                <td className="border border-border p-4 text-sm font-bold text-dark">#{session['رقم الدعوى']}</td>
-                                <td className="border border-border p-4 text-sm font-bold text-dark">{session['رقم المخالفة'] || '-'}</td>
-                                <td className="border border-border p-4 text-sm font-bold text-dark">{session['المدعي']}</td>
-                                <td className="border border-border p-4 text-sm font-medium text-dark leading-relaxed">
-                                    {session['محضر الجلسة'] || 'لا يوجد محضر'}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-
-                {stats.cancelledDecisionSessions.length > 0 && (
-                    <>
-                        <h2 className="text-xl font-black text-dark mb-4 border-r-4 border-green-600 pr-4">جدول صدور إلغاء القرار</h2>
-                        <table className="w-full border-collapse border border-border text-right mb-12">
-                            <thead>
-                                <tr className="bg-green-50">
-                                    <th className="border border-border p-4 text-sm font-black text-dark">رقم الجلسة</th>
-                                    <th className="border border-border p-4 text-sm font-black text-dark">رقم المخالفة</th>
-                                    <th className="border border-border p-4 text-sm font-black text-dark">المدعي</th>
-                                    <th className="border border-border p-4 text-sm font-black text-dark">المحكمة</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {stats.cancelledDecisionSessions.map((session) => (
-                                    <tr key={session.id}>
-                                        <td className="border border-border p-4 text-sm font-bold text-dark">#{session['رقم الدعوى']}</td>
-                                        <td className="border border-border p-4 text-sm font-bold text-dark">{session['رقم المخالفة'] || '-'}</td>
-                                        <td className="border border-border p-4 text-sm font-bold text-dark">{session['المدعي']}</td>
-                                        <td className="border border-border p-4 text-sm font-medium text-dark">
-                                            {session['المحكمة']}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </>
-                )}
-
-                <div className="mt-12 text-center text-xs text-text/40 mb-8">
-                    تم استخراج هذا التقرير بتاريخ {new Date().toLocaleDateString('ar-SA')}
-                </div>
-                <img 
-                    src="https://russeellcloud.k.frappe.cloud/files/footer.jpg" 
-                    alt="Official Footer" 
-                    className="w-full h-auto mt-auto"
-                    referrerPolicy="no-referrer"
-                />
-            </div>
+            {/* Remove duplicated print logic at the end */}
         </div>
     );
 };
