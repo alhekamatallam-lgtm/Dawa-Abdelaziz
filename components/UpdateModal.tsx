@@ -27,6 +27,11 @@ const UpdateModal: React.FC<UpdateModalProps> = ({ session, onClose, onUpdate })
             return;
         }
 
+        if (caseStatus && !reason.trim()) {
+            setError('يجب ذكر السبب عند اختيار حالة للدعوى.');
+            return;
+        }
+
         setIsUpdating(true);
         try {
             await onUpdate({
@@ -79,8 +84,8 @@ const UpdateModal: React.FC<UpdateModalProps> = ({ session, onClose, onUpdate })
                             </div>
                             {caseStatus && (
                                 <div className="animate-in fade-in slide-in-from-top-2">
-                                    <label className="block text-sm font-bold mb-1">السبب</label>
-                                    <input type="text" value={reason} onChange={e => setReason(e.target.value)} className="w-full p-2 border rounded-lg" placeholder="اكتب السبب هنا..." />
+                                    <label className="block text-sm font-bold mb-1">السبب (إلزامي)</label>
+                                    <input type="text" value={reason} onChange={e => setReason(e.target.value)} className="w-full p-2 border rounded-lg" placeholder="اكتب السبب هنا..." required />
                                 </div>
                             )}
                         </div>
