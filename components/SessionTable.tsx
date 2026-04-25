@@ -187,6 +187,18 @@ const SessionTable: React.FC<SessionTableProps> = ({
                                                             {session['التكليف'] || 'لا يوجد تكليف'}
                                                         </p>
                                                     </div>
+                                                    {session['حالة_الدعوى'] && (
+                                                        <div>
+                                                            <p className="font-bold text-text mb-1 text-[10px] opacity-60">حالة الدعوى</p>
+                                                            <p className="text-primary font-bold">{session['حالة_الدعوى']}</p>
+                                                        </div>
+                                                    )}
+                                                    {session['السبب'] && (
+                                                        <div className="col-span-2">
+                                                            <p className="font-bold text-text mb-1 text-[10px] opacity-60">السبب</p>
+                                                            <p className="text-dark font-medium italic">{session['السبب']}</p>
+                                                        </div>
+                                                    )}
                                                     {isNoShow && (
                                                         <div className="col-span-2 pt-2 mt-2 border-t border-red-200">
                                                             <p className="font-bold text-red-600 mb-1 text-[10px] opacity-80">حالة الحضور</p>

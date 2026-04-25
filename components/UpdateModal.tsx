@@ -12,6 +12,8 @@ const UpdateModal: React.FC<UpdateModalProps> = ({ session, onClose, onUpdate })
     const [assignment, setAssignment] = useState(session['التكليف'] || '');
     const [attendance, setAttendance] = useState(session['حضور الجلسة'] || '');
     const [minutes, setMinutes] = useState(session['محضر الجلسة'] || '');
+    const [caseStatus, setCaseStatus] = useState(session['حالة_الدعوى'] || '');
+    const [reason, setReason] = useState(session['السبب'] || '');
     const [addPrecedent, setAddPrecedent] = useState(session['اضافة_السوابق_القضائية'] === 'نعم');
     const [isUpdating, setIsUpdating] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -31,6 +33,8 @@ const UpdateModal: React.FC<UpdateModalProps> = ({ session, onClose, onUpdate })
                 "التكليف": assignment,
                 "حضور الجلسة": attendance,
                 "محضر الجلسة": attendance === 'حضرت' ? minutes : '',
+                "حالة_الدعوى": caseStatus,
+                "السبب": reason,
                 "اضافة_السوابق_القضائية": addPrecedent ? 'نعم' : 'لا'
             });
         } catch (err) {
@@ -58,9 +62,27 @@ const UpdateModal: React.FC<UpdateModalProps> = ({ session, onClose, onUpdate })
                         </select>
                     </div>
                     {attendance === 'حضرت' && (
-                        <div className="animate-in fade-in slide-in-from-top-2">
-                            <label className="block text-sm font-bold mb-1">محضر الجلسة (إلزامي)</label>
-                            <textarea value={minutes} onChange={e => setMinutes(e.target.value)} className="w-full p-2 border rounded-lg h-24" placeholder="ماذا حدث في الجلسة؟" required />
+                        <div className="animate-in fade-in slide-in-from-top-2 space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold mb-1">محضر الجلسة (إلزامي)</label>
+                                <textarea value={minutes} onChange={e => setMinutes(e.target.value)} className="w-full p-2 border rounded-lg h-24" placeholder="ماذا حدث في الجلسة؟" required />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold mb-1">حالة الدعوى</label>
+                                <select value={caseStatus} onChange={e => setCaseStatus(e.target.value)} className="w-full p-2 border rounded-lg">
+                                    <option value="">-- اختر حالة الدعوى --</option>
+                                    <option value="رفض الدعوى">رفض الدعوى</option>
+                                    <option value="عدم القبول">عدم القبول</option>
+                                    <option value="تأجيل الجلسة">تأجيل الجلسة</option>
+                                    <option value="إلغاء القرار">إلغاء القرار</option>
+                                </select>
+                            </div>
+                            {caseStatus && (
+                                <div className="animate-in fade-in slide-in-from-top-2">
+                                    <label className="block text-sm font-bold mb-1">السبب</label>
+                                    <input type="text" value={reason} onChange={e => setReason(e.target.value)} className="w-full p-2 border rounded-lg" placeholder="اكتب السبب هنا..." />
+                                </div>
+                            )}
                         </div>
                     )}
                     <div className="flex items-center gap-2 pt-2">
