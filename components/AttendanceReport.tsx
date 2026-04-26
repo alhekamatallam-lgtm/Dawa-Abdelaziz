@@ -22,7 +22,9 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
         const totalAttended = attendedSessions.length;
         const withMinutes = attendedSessions.filter(s => s['محضر الجلسة'] && s['محضر الجلسة'].trim() !== '').length;
         const withoutMinutes = totalAttended - withMinutes;
-        const cancelledDecisionSessions = sessions.filter(s => s['حالة_الدعوى'] === 'إلغاء القرار');
+        const cancelledDecisionSessions = sessions.filter(s => 
+            s['حالة_الدعوى'] === 'إلغاء القرار' || s['حالة_الدعوى'] === 'تنفيذ حكم إلغاء القرار'
+        );
         const cancelledDecisionCount = cancelledDecisionSessions.length;
         
         return { totalAttended, withMinutes, withoutMinutes, cancelledDecisionCount, cancelledDecisionSessions };

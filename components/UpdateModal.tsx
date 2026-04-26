@@ -80,6 +80,7 @@ const UpdateModal: React.FC<UpdateModalProps> = ({ session, onClose, onUpdate })
                                     <option value="عدم القبول">عدم القبول</option>
                                     <option value="تأجيل الجلسة">تأجيل الجلسة</option>
                                     <option value="إلغاء القرار">إلغاء القرار</option>
+                                    <option value="تنفيذ حكم إلغاء القرار">تنفيذ حكم إلغاء القرار</option>
                                 </select>
                             </div>
                             {caseStatus && (
