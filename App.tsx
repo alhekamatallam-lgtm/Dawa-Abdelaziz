@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { CaseSession, SessionsByDate, User } from './types';
-import { fetchInitialData, updateSession } from './services/api';
+import { fetchInitialData, updateSession, addSession } from './services/api';
 import CalendarView from './components/CalendarView';
 import SessionDetails from './components/SessionDetails';
-import { ErrorIcon, CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon, BriefcaseIcon, UserGroupIcon, QuickReportIcon, CogIcon, CheckCircleIcon } from './components/icons';
+import { ErrorIcon, CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon, BriefcaseIcon, UserGroupIcon, QuickReportIcon, CogIcon, CheckCircleIcon, PlusIcon } from './components/icons';
 import UpdateModal from './components/UpdateModal';
 import ViewModal from './components/ViewModal';
 import Dashboard from './components/Dashboard';
@@ -18,8 +18,9 @@ import QuickReports from './components/QuickReports';
 import QualityResultsView from './components/QualityResultsView';
 import SettingsView from './components/SettingsView';
 import AttendanceReport from './components/AttendanceReport';
+import AddSessionView from './components/AddSessionView';
 
-type View = 'calendar' | 'dashboard' | 'assignments' | 'lawyer_report' | 'plaintiff_report' | 'quick_reports' | 'quality_results' | 'settings' | 'attendance_report';
+type View = 'calendar' | 'dashboard' | 'assignments' | 'lawyer_report' | 'plaintiff_report' | 'quick_reports' | 'quality_results' | 'settings' | 'attendance_report' | 'add_session';
 type SpecialFilter = 'correctly_linked' | 'unlinked' | 'duplicates';
 interface AssignmentFilters {
     lawyer?: string;
@@ -190,6 +191,7 @@ const App: React.FC = () => {
         { id: 'lawyer_report', label: 'المندوبين', icon: BriefcaseIcon },
         { id: 'plaintiff_report', label: 'المدعين', icon: UserGroupIcon },
         { id: 'attendance_report', label: 'تقرير حضور الجلسات', icon: CheckCircleIcon },
+        { id: 'add_session', label: 'إضافة جلسة', icon: PlusIcon },
         { id: 'quick_reports', label: 'جودة البيانات', icon: QuickReportIcon },
         { id: 'settings', label: 'الإعدادات', icon: CogIcon },
     ];
@@ -309,6 +311,17 @@ const App: React.FC = () => {
                             setSessionToView(session);
                             setIsViewModalOpen(true);
                         }} />}
+                        {view === 'add_session' && currentUser && (
+                            <AddSessionView 
+                                allSessions={allSessions} 
+                                currentUser={currentUser}
+                                onAddSession={async (upd) => {
+                                    await addSession(upd);
+                                    // Refresh data
+                                    await loadData();
+                                }}
+                            />
+                        )}
                         {view === 'settings' && currentUser && (
                             <SettingsView 
                                 currentUser={currentUser} 

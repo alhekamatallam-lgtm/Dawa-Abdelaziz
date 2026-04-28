@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon, BriefcaseIcon, UserGroupIcon, QuickReportIcon, CogIcon, CheckCircleIcon } from './icons';
+import { CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon, BriefcaseIcon, UserGroupIcon, QuickReportIcon, CogIcon, CheckCircleIcon, PlusIcon } from './icons';
 
 interface BottomNavBarProps {
     view: string;
@@ -11,9 +11,9 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ view, setView, role }) => {
     // تم إلغاء فلترة الأدوار لتظهر جميع الصفحات لجميع المستخدمين كما طلب العميل
     const items = [
         { id: 'calendar', label: 'التقويم', icon: CalendarIcon },
-        { id: 'dashboard', label: 'التحكم', icon: ChartBarIcon },
+        { id: 'add_session', label: 'إضافة جلسة', icon: PlusIcon },
+        { id: 'attendance_report', label: 'الحضور', icon: CheckCircleIcon },
         { id: 'assignments', label: 'الجلسات', icon: ClipboardDocumentListIcon },
-        { id: 'attendance_report', label: 'تقرير الحضور', icon: CheckCircleIcon },
         { id: 'quick_reports', label: 'الجودة', icon: QuickReportIcon },
         { id: 'settings', label: 'الإعدادات', icon: CogIcon },
     ];

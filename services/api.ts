@@ -99,6 +99,31 @@ export const updateSession = async (id: number, updates: Partial<CaseSession>): 
     }
 };
 
+export const addSession = async (data: Partial<CaseSession>): Promise<any> => {
+    const payload = { 
+        sheet: "dd",
+        action: "insert", // Common pattern if supported
+        data: data 
+    };
+    
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify(payload),
+        });
+        
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to add session');
+        }
+        return result;
+    } catch (error) {
+        console.error("Error adding session:", error);
+        throw error;
+    }
+};
+
 export const updateUserSetting = async (id: string, updates: Partial<User>): Promise<any> => {
     const payload = { 
         sheet: "Setting",
