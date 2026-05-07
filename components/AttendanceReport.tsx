@@ -12,7 +12,7 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
     const [isSummaryOpen, setIsSummaryOpen] = useState(false);
     const [isCancelledOpen, setIsCancelledOpen] = useState(false);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-    const [printMode, setPrintMode] = useState<'all' | 'annulment'>('all');
+    const [printMode, setPrintMode] = useState<'all' | 'annulment' | 'dashboard'>('all');
 
     const attendedSessions = useMemo(() => {
         return sessions.filter(s => s['حضور الجلسة'] === 'حضرت');
@@ -125,6 +125,13 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
         }, 100);
     };
 
+    const handleExportDashboard = () => {
+        setPrintMode('dashboard');
+        setTimeout(() => {
+            window.print();
+        }, 100);
+    };
+
     const handlePrintAnnulment = (e: React.MouseEvent) => {
         e.stopPropagation();
         setPrintMode('annulment');
@@ -147,6 +154,13 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
+                    <button 
+                        onClick={handleExportDashboard}
+                        className="flex items-center justify-center gap-2 px-6 py-4 bg-dark text-white rounded-2xl font-black shadow-lg shadow-dark/10 hover:bg-black transition-all"
+                    >
+                        <PrinterIcon className="w-5 h-5" />
+                        طباعة الداش بورد
+                    </button>
                     <button 
                         onClick={handleExportPDF}
                         className="flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white rounded-2xl font-black shadow-lg shadow-primary/20 hover:bg-dark transition-all"
@@ -301,7 +315,69 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                     referrerPolicy="no-referrer"
                 />
                 
-                {printMode === 'all' ? (
+                {printMode === 'dashboard' ? (
+                    <div className="mt-8 space-y-12">
+                        <div className="text-center space-y-2 border-b-2 border-primary pb-6">
+                            <h1 className="text-3xl font-black text-dark">لوحة المعلومات والإحصائيات</h1>
+                            <p className="text-primary font-bold">ملخص عام لجميع المؤشرات والبيانات</p>
+                        </div>
+                        
+                        {/* Replicating the compact cards for print */}
+                        <div className="grid grid-cols-2 gap-4 rtl">
+                            <PrintStatBox title="عدد المخالفات" value={stats.uniqueViolations} subtitle="بدون تكرار" color="#2979bd" />
+                            <PrintStatBox title="عدد الدعاوى" value={stats.uniqueCases} subtitle="بدون تكرار" color="#fd812e" />
+                            <PrintStatBox title="عدد الجلسات" value={stats.sessionsWithNumber} subtitle="رقم الجلسة" color="#73b544" />
+                            <PrintStatBox title="عدد الحضور" value={stats.totalAttended} subtitle="حضرت" color="#8934a3" />
+                            <PrintStatBox 
+                                title="توثيق الأحكام الصادرة بالإلغاء" 
+                                value={`${stats.cancelledDecisionCount} (${formatCurrency(stats.totalCancelledValue)} ر.س)`} 
+                                subtitle="إجمالي القرارات الملغاة" 
+                                color="#c50000" 
+                            />
+                            <PrintStatBox 
+                                title="قيمة المخالفات (غير مكررة)" 
+                                value={`${formatCurrency(stats.totalViolationValue)} ر.س`} 
+                                subtitle={`مجموع ${stats.uniqueViolations} مخالفة فريدة`} 
+                                color="#1b3a6d" 
+                            />
+                            <PrintStatBox title="مخالفات بدون قيمة" value={stats.violationsWithoutValue} subtitle={`من إجمالي ${stats.uniqueViolations} مخالفة`} color="#7f3f0d" />
+                            <PrintStatBox title="قيمة إلغاء القرار" value={`${formatCurrency(stats.totalCancelledValue)} ر.س`} subtitle={`${stats.cancelledUniqueViolationCount} مخالفة فريدة`} color="#3b5926" />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-6 mt-12">
+                            <div className="p-6 bg-gray-50 rounded-2xl border border-gray-200">
+                                <h3 className="font-black text-dark mb-4 border-r-4 border-primary pr-3">ملخص الحضور</h3>
+                                <div className="space-y-3">
+                                    <div className="flex justify-between border-b pb-2">
+                                        <span className="font-bold text-text/60">إجمالي الجلسات المحضورة:</span>
+                                        <span className="font-black text-primary">{stats.totalAttended}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b pb-2">
+                                        <span className="font-bold text-text/60">جلسات بمحضر مسجل:</span>
+                                        <span className="font-black text-green-600">{stats.withMinutes}</span>
+                                    </div>
+                                    <div className="flex justify-between pb-2">
+                                        <span className="font-bold text-text/60">جلسات بدون محضر:</span>
+                                        <span className="font-black text-amber-600">{stats.withoutMinutes}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="p-6 bg-gray-50 rounded-2xl border border-gray-200">
+                                <h3 className="font-black text-dark mb-4 border-r-4 border-green-600 pr-3">ملخص الأحكام</h3>
+                                <div className="space-y-3">
+                                    <div className="flex justify-between border-b pb-2">
+                                        <span className="font-bold text-text/60">عدد أحكام الإلغاء:</span>
+                                        <span className="font-black text-green-700">{stats.cancelledDecisionCount}</span>
+                                    </div>
+                                    <div className="flex justify-between pb-2">
+                                        <span className="font-bold text-text/60">إجمالي القيمة المستردة:</span>
+                                        <span className="font-black text-green-700">{formatCurrency(stats.totalCancelledValue)} ر.س</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ) : printMode === 'all' ? (
                     <>
                         <div className="text-center mt-6 space-y-2 border-b-2 border-primary pb-6">
                             <h1 className="text-3xl font-black text-dark">تقرير حضور الجلسات</h1>
@@ -409,7 +485,7 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                 )}
 
                 <div className="mt-12 text-center text-xs text-text/40 mb-8 italic">
-                    تم استخراج هذا التقرير ({printMode === 'all' ? 'شامل' : 'أحكام إلغاء القرار فقط'}) بتاريخ {new Date().toLocaleDateString('ar-SA')}
+                    تم استخراج هذا التقرير ({printMode === 'all' ? 'شامل' : printMode === 'dashboard' ? 'لوحة المعلومات' : 'أحكام إلغاء القرار فقط'}) بتاريخ {new Date().toLocaleDateString('ar-SA')}
                 </div>
                 <img 
                     src="https://russeellcloud.k.frappe.cloud/files/footer.jpg" 
@@ -718,6 +794,18 @@ const CompactStatCard: React.FC<CompactStatCardProps> = ({ title, value, subtitl
         </div>
     );
 };
+
+const PrintStatBox: React.FC<{ title: string; value: React.ReactNode; subtitle: string; color: string }> = ({ title, value, subtitle, color }) => (
+    <div className="border-2 rounded-2xl overflow-hidden flex flex-col" style={{ borderColor: color }}>
+        <div className="p-2 text-center text-white font-black text-xs" style={{ backgroundColor: color }}>
+            {title}
+        </div>
+        <div className="p-4 text-center bg-gray-50 flex-1 flex flex-col justify-center gap-1">
+            <div className="text-2xl font-black" style={{ color: color }}>{value}</div>
+            <div className="text-[10px] font-bold text-text/50">{subtitle}</div>
+        </div>
+    </div>
+);
 
 export default AttendanceReport;
 
