@@ -28,6 +28,8 @@ export interface CaseSession {
   "حالة_الدعوى"?: string;
   "السبب"?: string;
   "اضافة_السوابق_القضائية"?: string;
+  "قيمة المخالفة"?: string | number;
+  "التصنيف"?: string;
 }
 
 export interface SessionsByDate {
