@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import type { CaseSession } from '../types';
 import StatCard from './StatCard';
-import { CheckCircleIcon, DocumentTextIcon, CalendarIcon, ClockIcon, UserIcon, ArrowRightIcon, ChevronDownIcon, PrinterIcon, PlusIcon } from './icons';
+import { CheckCircleIcon, DocumentTextIcon, CalendarIcon, ClockIcon, UserIcon, ArrowRightIcon, ChevronDownIcon, PrinterIcon, PlusIcon, TableCellsIcon } from './icons';
+import { utils, writeFile } from 'xlsx';
 
 interface AttendanceReportProps {
     sessions: CaseSession[];
@@ -22,9 +23,19 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
         const totalAttended = attendedSessions.length;
         const withMinutes = attendedSessions.filter(s => s['محضر الجلسة'] && s['محضر الجلسة'].trim() !== '').length;
         const withoutMinutes = totalAttended - withMinutes;
-        const cancelledDecisionSessions = sessions.filter(s => 
+        const cancelledDecisionSessionsRaw = sessions.filter(s => 
             s['حالة_الدعوى'] === 'إلغاء القرار' || s['حالة_الدعوى'] === 'تنفيذ حكم إلغاء القرار'
         );
+
+        // Unique by Case Number for the count and table
+        const uniqueCancelledCasesMap = new Map<string, CaseSession>();
+        cancelledDecisionSessionsRaw.forEach(s => {
+            const caseId = s['رقم الدعوى']?.toString().trim();
+            if (caseId && !uniqueCancelledCasesMap.has(caseId)) {
+                uniqueCancelledCasesMap.set(caseId, s);
+            }
+        });
+        const cancelledDecisionSessions = Array.from(uniqueCancelledCasesMap.values());
         const cancelledDecisionCount = cancelledDecisionSessions.length;
 
         // New stats based on user image
@@ -79,7 +90,7 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
 
         // Sum of annulled decision values (قيمة إلغاء القرار)
         const cancelledUniqueViolations = new Map<string, number>();
-        cancelledDecisionSessions.forEach(s => {
+        cancelledDecisionSessionsRaw.forEach(s => {
             const vId = s['رقم المخالفة']?.toString().trim();
             if (vId) {
                 const valStr = s['قيمة المخالفة']?.toString().replace(/,/g, '') || '0';
@@ -131,6 +142,46 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
             window.print();
         }, 100);
     };
+    
+    const handleExportExcel = () => {
+        // 1. Dashboard Stats Sheet
+        const dashboardStats = [
+            { 'المؤشر': 'عدد المخالفات', 'القيمة': stats.uniqueViolations, 'ملاحظات': 'بدون تكرار' },
+            { 'المؤشر': 'عدد الدعاوى', 'القيمة': stats.uniqueCases, 'ملاحظات': 'بدون تكرار' },
+            { 'المؤشر': 'عدد الجلسات', 'القيمة': stats.sessionsWithNumber, 'ملاحظات': 'رقم الجلسة' },
+            { 'المؤشر': 'عدد الحضور', 'القيمة': stats.totalAttended, 'ملاحظات': 'حضرت' },
+            { 'المؤشر': 'عدد أحكام الإلغاء', 'القيمة': stats.cancelledDecisionCount, 'ملاحظات': 'توثيق الأحكام الصادرة بالإلغاء' },
+            { 'المؤشر': 'إجمالي قيمة المخالفات', 'القيمة': stats.totalViolationValue, 'ملاحظات': 'ر.س' },
+            { 'المؤشر': 'إجمالي قيمة الإلغاء', 'القيمة': stats.totalCancelledValue, 'ملاحظات': 'ر.س' },
+            { 'المؤشر': 'مخالفات بدون قيمة', 'القيمة': stats.violationsWithoutValue, 'ملاحظات': 'لم يسجل لها قيمة' },
+        ];
+
+        // 2. Annulment Decisions Sheet
+        const annulmentData = stats.cancelledDecisionSessions.map(session => ({
+            'رقم الدعوى': session['رقم الدعوى'],
+            'رقم المخالفة': session['رقم المخالفة'] || '',
+            'المدعي': session['المدعي'],
+            'التصنيف': session['التصنيف'] || '',
+            'قيمة المخالفة': session['قيمة المخالفة'] || '',
+            'المحكمة': session['المحكمة'],
+            'الدائرة': session['الدائرة'],
+            'التاريخ': session['التاريخ'],
+        }));
+
+        // Create workbook and add sheets
+        const wb = utils.book_new();
+        
+        const wsStats = utils.json_to_sheet(dashboardStats);
+        utils.book_append_sheet(wb, wsStats, "ملخص الإحصائيات");
+
+        if (annulmentData.length > 0) {
+            const wsAnnulment = utils.json_to_sheet(annulmentData);
+            utils.book_append_sheet(wb, wsAnnulment, "أحكام إلغاء القرار");
+        }
+
+        // Write file
+        writeFile(wb, `تقرير_داش_بورد_${new Date().toLocaleDateString('ar-EG')}.xlsx`);
+    };
 
     const handlePrintAnnulment = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -154,6 +205,13 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
+                    <button 
+                        onClick={handleExportExcel}
+                        className="flex items-center justify-center gap-2 px-6 py-4 bg-green-700 text-white rounded-2xl font-black shadow-lg shadow-green-700/10 hover:bg-green-800 transition-all"
+                    >
+                        <TableCellsIcon className="w-5 h-5" />
+                        تصدير إكسل
+                    </button>
                     <button 
                         onClick={handleExportDashboard}
                         className="flex items-center justify-center gap-2 px-6 py-4 bg-dark text-white rounded-2xl font-black shadow-lg shadow-dark/10 hover:bg-black transition-all"
@@ -592,7 +650,15 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                         </div>
                     </button>
                     
-                    <div className="px-4 border-r border-green-200">
+                    <div className="px-4 border-r border-green-200 flex items-center gap-2">
+                        <button 
+                            onClick={handleExportExcel}
+                            className="p-3 bg-green-50 text-green-700 rounded-xl border border-green-200 hover:bg-green-100 transition-all shadow-sm flex items-center gap-2 active:scale-95"
+                            title="تصدير إكسل"
+                        >
+                            <TableCellsIcon className="w-5 h-5" />
+                            <span className="text-xs font-bold hidden md:inline">تصدير إكسل</span>
+                        </button>
                         <button 
                             onClick={handlePrintAnnulment}
                             className="p-3 bg-white text-green-700 rounded-xl border border-green-200 hover:bg-green-100 transition-all shadow-sm flex items-center gap-2 active:scale-95"
