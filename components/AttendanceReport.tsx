@@ -594,6 +594,39 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                                 </div>
                             </div>
                         </div>
+
+                        {/* Status Distribution Table for Print */}
+                        <div className="mt-12 break-inside-avoid shadow-sm print:shadow-none">
+                            <h3 className="text-xl font-black text-dark mb-6 border-r-4 border-primary pr-3">تفاصيل حالة الدعوى (توزيع الحالات)</h3>
+                            <table className="w-full text-right border-collapse border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                                <thead>
+                                    <tr className="bg-primary/10 text-primary">
+                                        <th className="p-3 border border-gray-200 font-black">حالة الدعوى</th>
+                                        <th className="p-3 border border-gray-200 font-black text-center">إجمالي السجلات</th>
+                                        <th className="p-3 border border-gray-200 font-black text-center">مخالفات فريدة</th>
+                                        <th className="p-3 border border-gray-200 font-black text-left">إجمالي القيمة (ر.س)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {[
+                                        { label: 'تأجيل الجلسة', stats: stats.adjournment },
+                                        { label: 'إلغاء القرار', stats: stats.annulment },
+                                        { label: 'عدم القبول', stats: stats.nonAcceptance },
+                                        { label: 'رفض الدعوى', stats: stats.refusal }
+                                    ].map((row) => (
+                                        <tr key={row.label} className="border-b last:border-0 border-gray-100">
+                                            <td className="p-3 border border-gray-200 font-bold bg-gray-50/50">{row.label}</td>
+                                            <td className="p-3 border border-gray-200 text-center font-bold text-dark/70">{row.stats.rows}</td>
+                                            <td className="p-3 border border-gray-200 text-center font-bold text-dark/70">{row.stats.uniqueCount}</td>
+                                            <td className="p-3 border border-gray-200 text-left font-black text-dark">{formatCurrency(row.stats.totalVal)} ر.س</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            <p className="text-[10px] text-gray-400 mt-4 italic font-bold">
+                                * يتم احتساب القيمة بناءً على أعلى سجل مسجل لكل مخالفة فريدة لتجنب التكرار.
+                            </p>
+                        </div>
                     </div>
                 ) : printMode === 'all' ? (
                     <>
