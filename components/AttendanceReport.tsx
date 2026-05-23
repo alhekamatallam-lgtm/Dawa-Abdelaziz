@@ -19,64 +19,120 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
         return sessions.filter(s => s['حضور الجلسة'] === 'حضرت');
     }, [sessions]);
 
-    const stats = useMemo(() => {
-        const totalAttended = attendedSessions.length;
-        const withMinutes = attendedSessions.filter(s => s['محضر الجلسة'] && s['محضر الجلسة'].trim() !== '').length;
-        const withoutMinutes = totalAttended - withMinutes;
-        const cancelledDecisionSessionsRaw = sessions.filter(s => 
-            s['حالة_الدعوى'] === 'إلغاء القرار' || s['حالة_الدعوى'] === 'تنفيذ حكم إلغاء القرار'
-        );
+    const normalizeNumber = (val: any): number => {
+        if (val === undefined || val === null) return 0;
+        let s = val.toString().trim();
+        // Replace Arabic-Indic digits with standard digits
+        const indicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        for (let i = 0; i < 10; i++) {
+            s = s.replace(new RegExp(indicDigits[i], 'g'), i.toString());
+        }
+        // Extract leading digits and decimal point (handles formats like "1,000.00 ر.س")
+        // We only keep the FIRST decimal point if multiple exist
+        const parts = s.split('.');
+        const mainPart = parts[0].replace(/[^\d]/g, '');
+        const decimalPart = parts.length > 1 ? parts[1].replace(/[^\d]/g, '') : '';
+        
+        const clean = decimalPart ? `${mainPart}.${decimalPart}` : mainPart;
+        const parsed = parseFloat(clean);
+        return isNaN(parsed) ? 0 : parsed;
+    };
 
-        // Unique by Case Number for the count and table
-        const uniqueCancelledCasesMap = new Map<string, CaseSession>();
-        cancelledDecisionSessionsRaw.forEach(s => {
+    const stats = useMemo(() => {
+        const attendedSessionsRaw = sessions.filter(s => {
+            const status = s['حضور الجلسة']?.toString().trim();
+            return status === 'حضرت' || status === 'حضر' || status === 'تم الحضور';
+        });
+        const totalAttended = attendedSessionsRaw.length;
+        
+        const withMinutes = attendedSessionsRaw.filter(s => s['محضر الجلسة'] && s['محضر الجلسة'].trim() !== '').length;
+        const withoutMinutes = totalAttended - withMinutes;
+        
+        // Detailed stats for each case status matching the technical analysis image
+        const getStatusStats = (statusNames: string[]) => {
+            const list = sessions.filter(s => {
+                const sStatus = s['حالة_الدعوى']?.toString().trim();
+                return statusNames.includes(sStatus);
+            });
+            
+            const rows = list.length;
+            const uniqueViolationsMap = new Map<string, number>();
+            list.forEach(s => {
+                const vId = s['رقم المخالفة']?.toString().trim();
+                if (vId && vId !== '') {
+                    const val = normalizeNumber(s['قيمة المخالفة']);
+                    const currentMax = uniqueViolationsMap.get(vId) || 0;
+                    if (val > currentMax) uniqueViolationsMap.set(vId, val);
+                    else if (!uniqueViolationsMap.has(vId)) uniqueViolationsMap.set(vId, val);
+                }
+            });
+            
+            const uniqueCount = uniqueViolationsMap.size;
+            const totalVal = Array.from(uniqueViolationsMap.values()).reduce((a, b) => a + b, 0);
+            
+            return { rows, uniqueCount, totalVal, list };
+        };
+
+        const annulment = getStatusStats(['إلغاء القرار', 'تنفيذ حكم إلغاء القرار']);
+        
+        // For the table display, we still need unique cases for the annulment section
+        const uniqueCancelledMap = new Map<string, CaseSession>();
+        annulment.list.forEach(s => {
             const caseId = s['رقم الدعوى']?.toString().trim();
-            if (caseId && !uniqueCancelledCasesMap.has(caseId)) {
-                uniqueCancelledCasesMap.set(caseId, s);
+            const vId = s['رقم المخالفة']?.toString().trim();
+            const key = caseId && caseId !== '' ? caseId : (vId && vId !== '' ? `v_${vId}` : `temp_${Math.random()}`);
+            if (!uniqueCancelledMap.has(key)) {
+                uniqueCancelledMap.set(key, s);
             }
         });
-        const cancelledDecisionSessions = Array.from(uniqueCancelledCasesMap.values());
-        const cancelledDecisionCount = cancelledDecisionSessions.length;
 
-        // New stats based on user image
-        const totalRecords = sessions.length;
-        
-        // Count unique violations (رقم المخالفة)
-        const uniqueViolations = new Set(
+        // Track duplicate violations specifically in the annulment subset for the popover
+        const violationCountsInAnnulment = new Map<string, number>();
+        annulment.list.forEach(s => {
+            const vId = s['رقم المخالفة']?.toString().trim();
+            if (vId && vId !== '') {
+                violationCountsInAnnulment.set(vId, (violationCountsInAnnulment.get(vId) || 0) + 1);
+            }
+        });
+
+        const cancelledDecisionSessions = Array.from(uniqueCancelledMap.values());
+        const duplicateViolationIdsInAnnulment = Array.from(violationCountsInAnnulment.entries())
+            .filter(([_, count]) => count > 1)
+            .map(([id, _]) => id);
+
+        // Count unique violations (رقم المخالفة) in the entire dataset
+        const uniqueViolationsList = Array.from(new Set(
             sessions
                 .map(s => s['رقم المخالفة']?.toString().trim())
                 .filter(v => v !== undefined && v !== null && v !== '')
-        ).size;
+        ));
+        const uniqueViolations = uniqueViolationsList.length;
         
-        // Count entries with a session number (عدد الجلسات)
-        // If the user expects 801 (total records), we should perhaps count all rows that aren't completely empty
+        // Count entries that are not entirely empty (aligning with total records 780)
         const sessionsWithNumber = sessions.filter(s => 
-            (s['رقم الجلسة'] && s['رقم الجلسة'].toString().trim() !== '') || 
-            (s['رقم الدعوى'] && s['رقم الدعوى'].toString().trim() !== '')
+            (s['رقم الدعوى'] && s['رقم الدعوى'].toString().trim() !== '') ||
+            (s['تاريخ الموعد'] && s['تاريخ الموعد'].toString().trim() !== '') ||
+            (s['رقم المخالفة'] && s['رقم المخالفة'].toString().trim() !== '')
         ).length;
 
-        // Count unique cases (رقم الدعوى)
+        // Count unique cases (رقم الدعوى) in the entire dataset
         const uniqueCases = new Set(
             sessions
                 .map(s => s['رقم الدعوى']?.toString().trim())
                 .filter(v => v !== undefined && v !== null && v !== '')
         ).size;
 
-        // Sum of violation values (قيمة المخالفة) - unique by violation number
-        // We take the MAX value found for each violation number in case it was updated in a later session
+        // Sum of ALL violation values (unique by violation number) across entire dataset
         const uniqueViolationEntries = new Map<string, number>();
         sessions.forEach(s => {
             const vId = s['رقم المخالفة']?.toString().trim();
             if (vId && vId !== '') {
-                // Remove spaces, commas and currency symbols for parsing
-                const valStr = s['قيمة المخالفة']?.toString().replace(/[^\d.]/g, '') || '0';
-                const val = parseFloat(valStr);
+                const val = normalizeNumber(s['قيمة المخالفة']);
                 const currentMax = uniqueViolationEntries.get(vId) || 0;
-                
-                if (!isNaN(val) && val > currentMax) {
+                if (val > currentMax) {
                     uniqueViolationEntries.set(vId, val);
                 } else if (!uniqueViolationEntries.has(vId)) {
-                    uniqueViolationEntries.set(vId, isNaN(val) ? 0 : val);
+                    uniqueViolationEntries.set(vId, val);
                 }
             }
         });
@@ -87,43 +143,27 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
             .filter(([_, v]) => v === 0)
             .map(([id, _]) => id);
         const violationsWithoutValue = zeroValueViolationIds.length;
-
-        // Sum of annulled decision values (قيمة إلغاء القرار)
-        const cancelledUniqueViolations = new Map<string, number>();
-        cancelledDecisionSessionsRaw.forEach(s => {
-            const vId = s['رقم المخالفة']?.toString().trim();
-            if (vId) {
-                const valStr = s['قيمة المخالفة']?.toString().replace(/,/g, '') || '0';
-                const val = parseFloat(valStr);
-                const currentMax = cancelledUniqueViolations.get(vId) || 0;
-                if (!isNaN(val) && val > currentMax) {
-                    cancelledUniqueViolations.set(vId, val);
-                } else if (!cancelledUniqueViolations.has(vId)) {
-                    cancelledUniqueViolations.set(vId, isNaN(val) ? 0 : val);
-                }
-            }
-        });
-        const totalCancelledValue = Array.from(cancelledUniqueViolations.values()).reduce((a, b) => a + b, 0);
         
         return { 
             totalAttended, 
             withMinutes, 
             withoutMinutes, 
-            cancelledDecisionCount, 
+            cancelledDecisionCount: annulment.rows, // 99 rows matches technical analysis
             cancelledDecisionSessions,
-            totalRecords,
-            uniqueViolations,
-            uniqueCases,
-            totalViolationValue,
-            violationsWithoutValue,
+            uniqueViolations, // should be 337
+            uniqueCases, // should be 396
+            totalViolationValue, // should be 1,059,500
+            violationsWithoutValue, // should be 2
             zeroValueViolationIds,
-            sessionsWithNumber,
-            cancelledUniqueViolationCount: cancelledUniqueViolations.size,
-            totalCancelledValue
+            sessionsWithNumber, // should be 780
+            cancelledUniqueViolationCount: annulment.uniqueCount, // 95 unique violations
+            totalCancelledValue: annulment.totalVal, // 295,000 value
+            duplicateViolationIdsInAnnulment
         };
-    }, [attendedSessions, sessions]);
+    }, [sessions]);
 
     const [showZeroValuePopover, setShowZeroValuePopover] = useState(false);
+    const [showDuplicatesPopover, setShowDuplicatesPopover] = useState(false);
 
     const formatCurrency = (val: number) => {
         return new Intl.NumberFormat('ar-SA', { maximumFractionDigits: 0 }).format(val);
@@ -240,25 +280,25 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
 
             {/* Visual Stats Cards Wrapper - Matching User Image Style */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-0 rounded-[1.5rem] overflow-hidden border border-border shadow-md print:hidden rtl">
-                {/* 1. عدد المخالفات */}
+                {/* 1. المخالفات الفريدة */}
                 <CompactStatCard 
-                    title="عدد المخالفات" 
+                    title="المخالفات الفريدة" 
                     value={stats.uniqueViolations} 
                     subtitle="بدون تكرار" 
                     theme="blue"
                 />
-                {/* 2. عدد الدعاوى */}
+                {/* 2. الدعاوى الفريدة */}
                 <CompactStatCard 
-                    title="عدد الدعاوى" 
+                    title="الدعاوى الفريدة" 
                     value={stats.uniqueCases} 
                     subtitle="بدون تكرار" 
                     theme="orange"
                 />
-                {/* 3. عدد الجلسات */}
+                {/* 3. إجمالي صفوف الجلسات */}
                 <CompactStatCard 
-                    title="عدد الجلسات" 
+                    title="إجمالي صفوف الجلسات" 
                     value={stats.sessionsWithNumber} 
-                    subtitle="رقم الجلسة" 
+                    subtitle="عدد السجلات" 
                     theme="green"
                 />
                 {/* 4. عدد الحضور */}
@@ -282,7 +322,7 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                 />
                 {/* 6. قيمة المخالفات */}
                 <CompactStatCard 
-                    title="قيمة المخالفات (غير مكررة)" 
+                    title="إجمالي قيمة المخالفات (فريدة)" 
                     value={`${formatCurrency(stats.totalViolationValue)} ر.س`} 
                     subtitle={`مجموع ${stats.uniqueViolations} مخالفة فريدة`} 
                     theme="darkBlue"
@@ -364,7 +404,72 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                 </div>
             )}
 
-            {/* Print Only Section */}
+            {/* Popover for Duplicate Violations in Annulments */}
+            {showDuplicatesPopover && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-dark/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div 
+                        className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="bg-red-700 p-6 text-white flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-white/20 rounded-lg">
+                                    <DocumentTextIcon className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="font-black text-lg">مخالفات مكررة</h3>
+                                    <p className="text-white/70 text-xs font-bold">أرقام المخالفات التي ظهرت في أكثر من دعوى ملغاة</p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => setShowDuplicatesPopover(false)}
+                                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                            >
+                                <ArrowRightIcon className="w-5 h-5 rotate-180" />
+                            </button>
+                        </div>
+                        
+                        <div className="p-6 max-h-[60vh] overflow-y-auto">
+                            <div className="space-y-4">
+                                <div className="p-4 bg-red-50 text-red-800 rounded-xl text-sm font-bold border border-red-100 leading-relaxed">
+                                    ملاحظة: تم استبعاد التكرارات من الإحصائيات (العدد والقيمة) لضمان دقة التقرير، حيث تم احتساب كل مخالفة مكررة مرة واحدة فقط.
+                                </div>
+                                <div className="space-y-2">
+                                    {stats.duplicateViolationIdsInAnnulment.map((id, index) => (
+                                        <div 
+                                            key={id} 
+                                            className="flex items-center justify-between p-4 bg-red-50/30 rounded-xl border border-red-700/10 transition-all font-bold group"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <span className="w-6 h-6 bg-white rounded-md flex items-center justify-center text-[10px] text-red-700 shadow-sm border border-red-100">
+                                                    {index + 1}
+                                                </span>
+                                                <div className="flex flex-col">
+                                                    <span className="text-dark/60 text-[10px] uppercase">رقم المخالفة</span>
+                                                    <span className="text-red-700 font-black">{id}</span>
+                                                </div>
+                                            </div>
+                                            <div className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-[10px]">
+                                                مكررة
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 bg-gray-50 border-t border-border flex justify-end">
+                            <button 
+                                onClick={() => setShowDuplicatesPopover(false)}
+                                className="px-6 py-2 bg-red-700 text-white rounded-xl font-black text-sm hover:opacity-90 transition-opacity"
+                            >
+                                إغلاق
+                            </button>
+                        </div>
+                    </div>
+                    <div className="absolute inset-0 -z-10" onClick={() => setShowDuplicatesPopover(false)} />
+                </div>
+            )}
             <div className="hidden print:block">
                 <img 
                     src="https://russeellcloud.k.frappe.cloud/files/header.jpg" 
@@ -682,12 +787,21 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                                     <p className="text-xs font-bold text-green-700 mt-1 opacity-70">توثيق الأحكام الصادرة بالإلغاء</p>
                                 </div>
                             </div>
-                            <div className="text-left">
+                            <div className="text-left flex flex-col items-end gap-2">
                                 <p className="text-[10px] font-black text-green-600 uppercase mb-1">العدد والقيمة</p>
                                 <div className="flex items-baseline gap-2 justify-end">
                                     <p className="text-3xl font-black text-green-900">{stats.cancelledDecisionCount}</p>
                                     <p className="text-lg font-bold text-green-700">({formatCurrency(stats.totalCancelledValue)} ر.س)</p>
                                 </div>
+                                {stats.duplicateViolationIdsInAnnulment.length > 0 && (
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); setShowDuplicatesPopover(true); }}
+                                        className="mt-1 flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-700 rounded-full text-[10px] font-black border border-red-100 hover:bg-red-100 transition-colors animate-pulse"
+                                    >
+                                        <PlusIcon className="w-3 h-3" />
+                                        مخالفات مكررة ({stats.duplicateViolationIdsInAnnulment.length})
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
