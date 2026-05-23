@@ -20,21 +20,38 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
     }, [sessions]);
 
     const normalizeNumber = (val: any): number => {
-        if (val === undefined || val === null) return 0;
+        if (typeof val === 'number') return val;
+        if (val === undefined || val === null || val === '') return 0;
+        
         let s = val.toString().trim();
-        // Replace Arabic-Indic digits with standard digits
+        
+        // 1. Replace Arabic-Indic digits
         const indicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
         for (let i = 0; i < 10; i++) {
             s = s.replace(new RegExp(indicDigits[i], 'g'), i.toString());
         }
-        // Extract leading digits and decimal point (handles formats like "1,000.00 ر.س")
-        // We only keep the FIRST decimal point if multiple exist
-        const parts = s.split('.');
-        const mainPart = parts[0].replace(/[^\d]/g, '');
-        const decimalPart = parts.length > 1 ? parts[1].replace(/[^\d]/g, '') : '';
+
+        // 2. Remove standard spacing and currency symbols
+        s = s.replace(/\s|ر\.س|SAR/g, '');
+
+        // 3. Handle decimal points. Often in these reports, the last dot or comma 
+        // with 1-2 digits after it is the decimal.
+        const decimalMatch = s.match(/[.,](\d{1,2})$/);
+        let decimal = "";
+        let main = s;
+        if (decimalMatch) {
+            decimal = decimalMatch[1];
+            // Remove the decimal part from main string to clean separators
+            main = s.substring(0, s.length - decimalMatch[0].length);
+        }
         
-        const clean = decimalPart ? `${mainPart}.${decimalPart}` : mainPart;
-        const parsed = parseFloat(clean);
+        // 4. Remove all remaining non-digits (thousands separators like dots or commas)
+        const cleanMain = main.replace(/\D/g, '');
+        
+        if (cleanMain === '' && decimal === '') return 0;
+        
+        const cleanVal = decimal ? `${cleanMain}.${decimal}` : cleanMain;
+        const parsed = parseFloat(cleanVal);
         return isNaN(parsed) ? 0 : parsed;
     };
 
@@ -74,6 +91,9 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
         };
 
         const annulment = getStatusStats(['إلغاء القرار', 'تنفيذ حكم إلغاء القرار']);
+        const adjournment = getStatusStats(['تأجيل الجلسة', 'تأجيل']);
+        const nonAcceptance = getStatusStats(['عدم القبول', 'حكم بعدم القبول']);
+        const refusal = getStatusStats(['رفض الدعوى', 'رفض']);
         
         // For the table display, we still need unique cases for the annulment section
         const uniqueCancelledMap = new Map<string, CaseSession>();
@@ -123,15 +143,15 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
         ).size;
 
         // Sum of ALL violation values (unique by violation number) across entire dataset
+        // Rule: For each unique violation number, take the HIGHEST value encountered.
+        // This ensures updates or multiple sessions don't dilute the reported violation amount.
         const uniqueViolationEntries = new Map<string, number>();
         sessions.forEach(s => {
             const vId = s['رقم المخالفة']?.toString().trim();
             if (vId && vId !== '') {
                 const val = normalizeNumber(s['قيمة المخالفة']);
                 const currentMax = uniqueViolationEntries.get(vId) || 0;
-                if (val > currentMax) {
-                    uniqueViolationEntries.set(vId, val);
-                } else if (!uniqueViolationEntries.has(vId)) {
+                if (val > currentMax || !uniqueViolationEntries.has(vId)) {
                     uniqueViolationEntries.set(vId, val);
                 }
             }
@@ -158,6 +178,10 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
             sessionsWithNumber, // should be 780
             cancelledUniqueViolationCount: annulment.uniqueCount, // 95 unique violations
             totalCancelledValue: annulment.totalVal, // 295,000 value
+            annulment,
+            adjournment,
+            nonAcceptance,
+            refusal,
             duplicateViolationIdsInAnnulment
         };
     }, [sessions]);
@@ -266,15 +290,6 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                         <DocumentTextIcon className="w-5 h-5" />
                         تصدير PDF
                     </button>
-                    {onSessionClick && (
-                        <button 
-                            onClick={() => onSessionClick({})}
-                            className="bg-dark text-white px-6 py-4 rounded-2xl font-black flex items-center gap-2 hover:bg-black transition-all active:scale-95 shadow-lg shadow-dark/10"
-                        >
-                            <PlusIcon className="w-5 h-5" />
-                            إضافة جلسة
-                        </button>
-                    )}
                 </div>
             </div>
 
@@ -342,6 +357,46 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                     subtitle={`${stats.cancelledUniqueViolationCount} مخالفة فريدة`} 
                     theme="darkGreen"
                 />
+            </div>
+
+            {/* Status Distribution Table - Matching Technical Analysis */}
+            <div className="bg-white rounded-[2rem] border border-border shadow-md overflow-hidden print:hidden">
+                <div className="p-6 border-b border-border bg-gray-50 flex items-center gap-3">
+                    <TableCellsIcon className="w-6 h-6 text-primary" />
+                    <h3 className="text-xl font-black text-dark tracking-tight">تفاصيل حالة الدعوى (توزيع الحالات)</h3>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-right border-collapse">
+                        <thead>
+                            <tr className="bg-primary/5 text-primary">
+                                <th className="p-4 font-black border-b border-border">حالة الدعوى</th>
+                                <th className="p-4 font-black border-b border-border text-center">إجمالي السجلات</th>
+                                <th className="p-4 font-black border-b border-border text-center">مخالفات فريدة</th>
+                                <th className="p-4 font-black border-b border-border text-left">إجمالي القيمة (ر.س)</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                            {[
+                                { label: 'تأجيل الجلسة', stats: stats.adjournment, color: 'text-orange-600', bg: 'bg-orange-50' },
+                                { label: 'إلغاء القرار', stats: stats.annulment, color: 'text-green-600', bg: 'bg-green-50' },
+                                { label: 'عدم القبول', stats: stats.nonAcceptance, color: 'text-blue-600', bg: 'bg-blue-50' },
+                                { label: 'رفض الدعوى', stats: stats.refusal, color: 'text-red-600', bg: 'bg-red-50' }
+                            ].map((row) => (
+                                <tr key={row.label} className="hover:bg-gray-50 transition-colors group">
+                                    <td className="p-4 font-black text-dark">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-3 h-3 rounded-full ${row.bg.replace('bg-', 'bg-opacity-100 bg-')}`} />
+                                            {row.label}
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-center font-bold text-dark/70">{row.stats.rows}</td>
+                                    <td className="p-4 text-center font-bold text-dark/70">{row.stats.uniqueCount}</td>
+                                    <td className={`p-4 text-left font-black ${row.color}`}>{formatCurrency(row.stats.totalVal)} ر.س</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {/* Popover for Violations without value */}
