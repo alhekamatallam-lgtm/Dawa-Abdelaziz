@@ -69,6 +69,8 @@ const SessionTable: React.FC<SessionTableProps> = ({
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">التوقيت</th>
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">رقم الدعوى</th>
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-indigo-700 uppercase tracking-wider">رقم الجلسة</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-emerald-800 uppercase tracking-wider hidden sm:table-cell">نوع الموعد</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-amber-800 uppercase tracking-wider hidden md:table-cell">نوع الدعوى</th>
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider hidden sm:table-cell">رقم المخالفة</th>
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider hidden md:table-cell">المحكمة</th>
                         <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-dark uppercase tracking-wider">الدائرة</th>
@@ -114,6 +116,16 @@ const SessionTable: React.FC<SessionTableProps> = ({
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-text font-bold">{session['رقم الدعوى']}</td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-indigo-600 font-black">{session['رقم الجلسة'] || '-'}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm hidden sm:table-cell">
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                            {session['نوع الموعد'] || 'جلسة'}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm hidden md:table-cell">
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-100">
+                                            {session['نوع الدعوى'] || '-'}
+                                        </span>
+                                    </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-primary hidden sm:table-cell">{session['رقم المخالفة'] || '-'}</td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-text hidden md:table-cell max-w-[150px] truncate" title={session['المحكمة']}>{session['المحكمة']}</td>
                                     
@@ -162,12 +174,24 @@ const SessionTable: React.FC<SessionTableProps> = ({
                                 </tr>
                                 {isExpanded && (
                                     <tr className={`md:hidden ${isPrecedent ? 'bg-green-50' : isNoShow ? 'bg-red-50' : isConflict ? 'bg-amber-50' : 'bg-white'}`}>
-                                        <td colSpan={showDateColumn ? 8 : 7} className="p-0">
+                                        <td colSpan={showDateColumn ? 11 : 10} className="p-0">
                                             <div className={`px-4 py-4 bg-light/80 border-r-4 ${isPrecedent ? 'border-green-500' : isNoShow ? 'border-red-500' : 'border-primary'} m-2 rounded-lg shadow-inner`}>
                                                 <div className="grid grid-cols-2 gap-4 text-xs">
                                                     <div>
                                                         <p className="font-bold text-text mb-1 text-[10px] opacity-60 uppercase">رقم الجلسة</p>
                                                         <p className="text-indigo-600 font-black">{session['رقم الجلسة'] || 'لا يوجد'}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-text mb-1 text-[10px] opacity-60 uppercase">نوع الموعد</p>
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                                            {session['نوع الموعد'] || 'جلسة'}
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-text mb-1 text-[10px] opacity-60 uppercase">نوع الدعوى</p>
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-100">
+                                                            {session['نوع الدعوى'] || '-'}
+                                                        </span>
                                                     </div>
                                                     <div>
                                                         <p className="font-bold text-text mb-1 text-[10px] opacity-60 uppercase">رقم المخالفة</p>

@@ -36,6 +36,7 @@ const SkeletonTableRow: React.FC<{ showDate?: boolean }> = ({ showDate }) => (
         <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell"><SkeletonBase className="h-4 w-32" /></td>
         <td className="px-6 py-4 whitespace-nowrap"><SkeletonBase className="h-4 w-12" /></td>
         <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell"><SkeletonBase className="h-4 w-24" /></td>
+        <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell"><SkeletonBase className="h-4 w-24" /></td>
         <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell"><SkeletonBase className="h-4 w-28" /></td>
         <td className="px-6 py-4 whitespace-nowrap"><SkeletonBase className="h-9 w-9 rounded-full" /></td>
     </tr>
@@ -52,6 +53,7 @@ const SkeletonTable = ({ showDate = false }) => (
                     <th scope="col" className="px-6 py-4 text-right text-sm font-semibold text-text hidden md:table-cell">المحكمة</th>
                     <th scope="col" className="px-6 py-4 text-right text-sm font-semibold text-text">الدائرة</th>
                     <th scope="col" className="px-6 py-4 text-right text-sm font-semibold text-text hidden md:table-cell">نوع الموعد</th>
+                    <th scope="col" className="px-6 py-4 text-right text-sm font-semibold text-text hidden md:table-cell">نوع الدعوى</th>
                     <th scope="col" className="px-6 py-4 text-right text-sm font-semibold text-text hidden md:table-cell">التكليف</th>
                     <th scope="col" className="relative px-6 py-4"><span className="sr-only">تعديل</span></th>
                 </tr>

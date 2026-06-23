@@ -7,6 +7,7 @@ export interface CaseSession {
   "المحكمة": string;
   "الدائرة": string;
   "نوع الموعد": string;
+  "نوع الدعوى"?: string;
   "وقت الموعد": string;
   "وقت الجلسة"?: string;
   "تاريخ الدعوى": string;

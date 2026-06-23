@@ -77,6 +77,7 @@ const AddSessionView: React.FC<AddSessionViewProps> = ({ allSessions, currentUse
                 "المحكمة": foundCase["المحكمة"],
                 "الدائرة": foundCase["الدائرة"],
                 "نوع الموعد": foundCase["نوع الموعد"],
+                "نوع الدعوى": foundCase["نوع الدعوى"],
                 "التكليف": foundCase["التكليف"],
                 "رقم الجلسة": sessionNumber,
                 "حضور الجلسة": attendance,

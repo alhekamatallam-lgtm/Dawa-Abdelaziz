@@ -25,11 +25,13 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
 }) => {
     const [selectedCircuit, setSelectedCircuit] = useState<string | null>(null);
     const [selectedPlaintiff, setSelectedPlaintiff] = useState<string | null>(null);
+    const [selectedCaseType, setSelectedCaseType] = useState<string | null>(null);
 
     // إعادة ضبط الفلاتر عند تغيير التاريخ
     useEffect(() => {
         setSelectedCircuit(null);
         setSelectedPlaintiff(null);
+        setSelectedCaseType(null);
     }, [selectedDate, showOnlyConflicts]);
 
     const conflictingSessionIds = useMemo(() => {
@@ -73,6 +75,15 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
         return Array.from(plaintiffs.entries()).sort((a, b) => b[1] - a[1]);
     }, [conflictFilteredSessions]);
 
+    const availableCaseTypes = useMemo(() => {
+        const caseTypes = new Map<string, number>();
+        conflictFilteredSessions.forEach(s => {
+            const name = (s['نوع الدعوى'] || '').trim() || 'غير محدد';
+            caseTypes.set(name, (caseTypes.get(name) || 0) + 1);
+        });
+        return Array.from(caseTypes.entries()).sort((a, b) => b[1] - a[1]);
+    }, [conflictFilteredSessions]);
+
     const sessionsToDisplay = useMemo(() => {
         let filtered = conflictFilteredSessions;
         
@@ -93,12 +104,16 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
         if (selectedPlaintiff) {
             filtered = filtered.filter(s => ((s['المدعي'] || '').trim() || 'غير محدد') === selectedPlaintiff);
         }
+        if (selectedCaseType) {
+            filtered = filtered.filter(s => ((s['نوع الدعوى'] || '').trim() || 'غير محدد') === selectedCaseType);
+        }
         return filtered;
-    }, [conflictFilteredSessions, selectedCircuit, selectedPlaintiff]);
+    }, [conflictFilteredSessions, selectedCircuit, selectedPlaintiff, selectedCaseType]);
 
     const handleResetFilters = () => {
         setSelectedCircuit(null);
         setSelectedPlaintiff(null);
+        setSelectedCaseType(null);
     };
 
     if (!selectedDate) {
@@ -147,7 +162,7 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
                         <button
                             onClick={handleResetFilters}
                             className={`px-6 py-2 text-xs font-bold rounded-xl transition-all border ${
-                                !selectedCircuit && !selectedPlaintiff
+                                !selectedCircuit && !selectedPlaintiff && !selectedCaseType
                                 ? 'bg-primary text-white border-transparent shadow-md'
                                 : 'bg-white text-text border-border hover:bg-light'
                             }`}
@@ -156,7 +171,7 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         {/* Circuits Filter Column */}
                         <div className="space-y-3">
                             <label className="text-[10px] font-black text-primary uppercase tracking-widest opacity-60 mr-2 flex items-center gap-2">
@@ -202,6 +217,31 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
                                         }`}
                                     >
                                         {name} <span className={`mr-1 opacity-50 ${selectedPlaintiff === name ? 'text-white' : ''}`}>({count})</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Case Types Filter Column */}
+                        <div className="space-y-3 border-r border-border pr-6">
+                            <label className="text-[10px] font-black text-[#b45d0b] uppercase tracking-widest opacity-60 mr-2 flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 bg-[#b45d0b] rounded-full"></span>
+                                حسب نوع الدعوى
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                                {availableCaseTypes.map(([name, count]) => (
+                                    <button
+                                        key={name}
+                                        onClick={() => {
+                                            setSelectedCaseType(selectedCaseType === name ? null : name);
+                                        }}
+                                        className={`px-4 py-2 text-[11px] font-bold rounded-xl transition-all border ${
+                                            selectedCaseType === name 
+                                            ? 'bg-[#b45d0b] text-white border-transparent shadow-sm' 
+                                            : 'bg-white text-dark/70 border-border hover:border-[#b45d0b]/30 hover:bg-light'
+                                        }`}
+                                    >
+                                        {name} <span className={`mr-1 opacity-50 ${selectedCaseType === name ? 'text-white' : ''}`}>({count})</span>
                                     </button>
                                 ))}
                             </div>
