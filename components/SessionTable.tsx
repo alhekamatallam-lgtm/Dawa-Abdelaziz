@@ -9,6 +9,7 @@ interface SessionTableProps {
     onViewClick?: (session: CaseSession) => void;
     showDateColumn?: boolean;
     conflictingSessionIds?: Set<number>;
+    sortBy?: string;
 }
 
 const SessionTable: React.FC<SessionTableProps> = ({ 
@@ -16,7 +17,8 @@ const SessionTable: React.FC<SessionTableProps> = ({
     onUpdateClick, 
     onViewClick,
     showDateColumn = false, 
-    conflictingSessionIds 
+    conflictingSessionIds,
+    sortBy = 'datetime'
 }) => {
     const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
 
@@ -29,6 +31,38 @@ const SessionTable: React.FC<SessionTableProps> = ({
     }
     
     const sortedSessions = [...sessions].sort((a, b) => {
+        if (sortBy === 'court') {
+            const valA = (a['المحكمة'] || '').trim();
+            const valB = (b['المحكمة'] || '').trim();
+            const cmp = valA.localeCompare(valB, 'ar');
+            if (cmp !== 0) return cmp;
+        } else if (sortBy === 'caseType') {
+            const valA = (a['نوع الدعوى'] || '').trim();
+            const valB = (b['نوع الدعوى'] || '').trim();
+            const cmp = valA.localeCompare(valB, 'ar');
+            if (cmp !== 0) return cmp;
+        } else if (sortBy === 'caseNumber') {
+            const valA = (a['رقم الدعوى'] || '').trim();
+            const valB = (b['رقم الدعوى'] || '').trim();
+            const cmp = valA.localeCompare(valB, 'ar', { numeric: true });
+            if (cmp !== 0) return cmp;
+        } else if (sortBy === 'sessionNumber') {
+            const valA = (a['رقم الجلسة'] || '').trim();
+            const valB = (b['رقم الجلسة'] || '').trim();
+            const cmp = valA.localeCompare(valB, 'ar', { numeric: true });
+            if (cmp !== 0) return cmp;
+        } else if (sortBy === 'circuit') {
+            const valA = (a['الدائرة'] || '').trim();
+            const valB = (b['الدائرة'] || '').trim();
+            const cmp = valA.localeCompare(valB, 'ar');
+            if (cmp !== 0) return cmp;
+        } else if (sortBy === 'lawyer') {
+            const valA = (a['التكليف'] || '').trim();
+            const valB = (b['التكليف'] || '').trim();
+            const cmp = valA.localeCompare(valB, 'ar');
+            if (cmp !== 0) return cmp;
+        }
+
         if (showDateColumn) {
             const parseDate = (dateStr: string) => {
                 const [day, month, year] = dateStr.split('-').map(Number);
@@ -81,7 +115,7 @@ const SessionTable: React.FC<SessionTableProps> = ({
                     </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-border">
-                    {sortedSessions.map((session) => {
+                    {sortedSessions.map((session, index) => {
                         const isConflict = conflictingSessionIds?.has(session.id);
                         const isNoShow = session['حضور الجلسة'] === 'لم أحضر';
                         const isPrecedent = session['اضافة_السوابق_القضائية'] === 'نعم';
@@ -89,7 +123,7 @@ const SessionTable: React.FC<SessionTableProps> = ({
                         const circuitName = (session['الدائرة'] || '').trim();
 
                         return (
-                            <React.Fragment key={session.id}>
+                            <React.Fragment key={`${session.id}-${index}`}>
                                 <tr 
                                     className={`${isPrecedent ? 'bg-green-50/80' : isNoShow ? 'bg-red-50/80' : isConflict ? 'bg-amber-50/60' : 'bg-white'} hover:${isPrecedent ? 'bg-green-100/90' : isNoShow ? 'bg-red-100/90' : isConflict ? 'bg-amber-100/80' : 'bg-light'} transition-colors cursor-pointer md:cursor-default relative`}
                                     onClick={() => handleRowToggle(session.id)}

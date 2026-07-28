@@ -26,12 +26,14 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
     const [selectedCircuit, setSelectedCircuit] = useState<string | null>(null);
     const [selectedPlaintiff, setSelectedPlaintiff] = useState<string | null>(null);
     const [selectedCaseType, setSelectedCaseType] = useState<string | null>(null);
+    const [selectedCourt, setSelectedCourt] = useState<string | null>(null);
 
     // إعادة ضبط الفلاتر عند تغيير التاريخ
     useEffect(() => {
         setSelectedCircuit(null);
         setSelectedPlaintiff(null);
         setSelectedCaseType(null);
+        setSelectedCourt(null);
     }, [selectedDate, showOnlyConflicts]);
 
     const conflictingSessionIds = useMemo(() => {
@@ -84,6 +86,15 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
         return Array.from(caseTypes.entries()).sort((a, b) => b[1] - a[1]);
     }, [conflictFilteredSessions]);
 
+    const availableCourts = useMemo(() => {
+        const courts = new Map<string, number>();
+        conflictFilteredSessions.forEach(s => {
+            const name = (s['المحكمة'] || '').trim() || 'غير محدد';
+            courts.set(name, (courts.get(name) || 0) + 1);
+        });
+        return Array.from(courts.entries()).sort((a, b) => b[1] - a[1]);
+    }, [conflictFilteredSessions]);
+
     const sessionsToDisplay = useMemo(() => {
         let filtered = conflictFilteredSessions;
         
@@ -107,13 +118,17 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
         if (selectedCaseType) {
             filtered = filtered.filter(s => ((s['نوع الدعوى'] || '').trim() || 'غير محدد') === selectedCaseType);
         }
+        if (selectedCourt) {
+            filtered = filtered.filter(s => ((s['المحكمة'] || '').trim() || 'غير محدد') === selectedCourt);
+        }
         return filtered;
-    }, [conflictFilteredSessions, selectedCircuit, selectedPlaintiff, selectedCaseType]);
+    }, [conflictFilteredSessions, selectedCircuit, selectedPlaintiff, selectedCaseType, selectedCourt, searchQuery]);
 
     const handleResetFilters = () => {
         setSelectedCircuit(null);
         setSelectedPlaintiff(null);
         setSelectedCaseType(null);
+        setSelectedCourt(null);
     };
 
     if (!selectedDate) {
@@ -162,7 +177,7 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
                         <button
                             onClick={handleResetFilters}
                             className={`px-6 py-2 text-xs font-bold rounded-xl transition-all border ${
-                                !selectedCircuit && !selectedPlaintiff && !selectedCaseType
+                                !selectedCircuit && !selectedPlaintiff && !selectedCaseType && !selectedCourt
                                 ? 'bg-primary text-white border-transparent shadow-md'
                                 : 'bg-white text-text border-border hover:bg-light'
                             }`}
@@ -171,17 +186,42 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {/* Circuits Filter Column */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+                        {/* Courts Filter Column */}
                         <div className="space-y-3">
+                            <label className="text-[10px] font-black text-indigo-700 uppercase tracking-widest opacity-60 mr-2 flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 bg-indigo-700 rounded-full"></span>
+                                حسب المحكمة
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                                {availableCourts.map(([name, count], index) => (
+                                    <button
+                                        key={`${name}-${index}`}
+                                        onClick={() => {
+                                            setSelectedCourt(selectedCourt === name ? null : name);
+                                        }}
+                                        className={`px-4 py-2 text-[11px] font-bold rounded-xl transition-all border ${
+                                            selectedCourt === name 
+                                            ? 'bg-indigo-700 text-white border-transparent shadow-sm' 
+                                            : 'bg-white text-dark/70 border-border hover:border-indigo-700/30 hover:bg-light'
+                                        }`}
+                                    >
+                                        {name} <span className={`mr-1 opacity-50 ${selectedCourt === name ? 'text-white' : ''}`}>({count})</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Circuits Filter Column */}
+                        <div className="space-y-3 border-r border-border pr-4">
                             <label className="text-[10px] font-black text-primary uppercase tracking-widest opacity-60 mr-2 flex items-center gap-2">
                                 <span className="w-1.5 h-1.5 bg-primary rounded-full"></span>
                                 حسب الدوائر
                             </label>
                             <div className="flex flex-wrap gap-2">
-                                {availableCircuits.map(([name, count]) => (
+                                {availableCircuits.map(([name, count], index) => (
                                     <button
-                                        key={name}
+                                        key={`${name}-${index}`}
                                         onClick={() => {
                                             setSelectedCircuit(selectedCircuit === name ? null : name);
                                         }}
@@ -204,9 +244,9 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
                                 حسب المدعي
                             </label>
                             <div className="flex flex-wrap gap-2">
-                                {availablePlaintiffs.map(([name, count]) => (
+                                {availablePlaintiffs.map(([name, count], index) => (
                                     <button
-                                        key={name}
+                                        key={`${name}-${index}`}
                                         onClick={() => {
                                             setSelectedPlaintiff(selectedPlaintiff === name ? null : name);
                                         }}
@@ -229,9 +269,9 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
                                 حسب نوع الدعوى
                             </label>
                             <div className="flex flex-wrap gap-2">
-                                {availableCaseTypes.map(([name, count]) => (
+                                {availableCaseTypes.map(([name, count], index) => (
                                     <button
-                                        key={name}
+                                        key={`${name}-${index}`}
                                         onClick={() => {
                                             setSelectedCaseType(selectedCaseType === name ? null : name);
                                         }}

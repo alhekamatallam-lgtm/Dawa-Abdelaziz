@@ -3,7 +3,7 @@ import type { CaseSession, SessionsByDate, User } from './types';
 import { fetchInitialData, updateSession, addSession } from './services/api';
 import CalendarView from './components/CalendarView';
 import SessionDetails from './components/SessionDetails';
-import { ErrorIcon, CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon, BriefcaseIcon, UserGroupIcon, QuickReportIcon, CogIcon, CheckCircleIcon, PlusIcon } from './components/icons';
+import { ErrorIcon, CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon, BriefcaseIcon, UserGroupIcon, QuickReportIcon, CogIcon, CheckCircleIcon, PlusIcon, DocumentTextIcon } from './components/icons';
 import UpdateModal from './components/UpdateModal';
 import ViewModal from './components/ViewModal';
 import Dashboard from './components/Dashboard';
@@ -18,9 +18,10 @@ import QuickReports from './components/QuickReports';
 import QualityResultsView from './components/QualityResultsView';
 import SettingsView from './components/SettingsView';
 import AttendanceReport from './components/AttendanceReport';
+import UnappealedAnnulmentsReport from './components/UnappealedAnnulmentsReport';
 import AddSessionView from './components/AddSessionView';
 
-type View = 'calendar' | 'dashboard' | 'assignments' | 'lawyer_report' | 'plaintiff_report' | 'quick_reports' | 'quality_results' | 'settings' | 'attendance_report' | 'add_session';
+type View = 'calendar' | 'dashboard' | 'assignments' | 'lawyer_report' | 'plaintiff_report' | 'quick_reports' | 'quality_results' | 'settings' | 'attendance_report' | 'appeal_report' | 'unappealed_report' | 'add_session';
 type SpecialFilter = 'correctly_linked' | 'unlinked' | 'duplicates';
 interface AssignmentFilters {
     lawyer?: string;
@@ -187,10 +188,12 @@ const App: React.FC = () => {
     const navItems = [
         { id: 'calendar', label: 'التقويم', icon: CalendarIcon },
         { id: 'dashboard', label: 'لوحة التحكم', icon: ChartBarIcon },
-        { id: 'assignments', label: 'التكليف', icon: ClipboardDocumentListIcon },
+        { id: 'assignments', label: 'الجلسات', icon: ClipboardDocumentListIcon },
         { id: 'lawyer_report', label: 'المندوبين', icon: BriefcaseIcon },
         { id: 'plaintiff_report', label: 'المدعين', icon: UserGroupIcon },
         { id: 'attendance_report', label: 'تقرير حضور الجلسات', icon: CheckCircleIcon },
+        { id: 'appeal_report', label: 'جلسات الاستئناف', icon: DocumentTextIcon },
+        { id: 'unappealed_report', label: 'إلغاء لم يستأنف', icon: DocumentTextIcon },
         { id: 'add_session', label: 'إضافة جلسة', icon: PlusIcon },
         { id: 'quick_reports', label: 'جودة البيانات', icon: QuickReportIcon },
         { id: 'settings', label: 'الإعدادات', icon: CogIcon },
@@ -311,6 +314,23 @@ const App: React.FC = () => {
                             setSessionToView(session);
                             setIsViewModalOpen(true);
                         }} />}
+                        {view === 'appeal_report' && <AttendanceReport 
+                            sessions={filteredSessions} 
+                            title="تقرير جلسات الاستئناف"
+                            subtitle="استعراض وتوثيق وتحليل جلسات الاستئناف والمحاضر المسجلة"
+                            caseTypeFilter="استئناف"
+                            onSessionClick={(session) => {
+                                setSessionToView(session);
+                                setIsViewModalOpen(true);
+                            }} 
+                        />}
+                        {view === 'unappealed_report' && <UnappealedAnnulmentsReport 
+                            sessions={filteredSessions} 
+                            onSessionClick={(session) => {
+                                setSessionToView(session);
+                                setIsViewModalOpen(true);
+                            }} 
+                        />}
                         {view === 'add_session' && currentUser && (
                             <AddSessionView 
                                 allSessions={allSessions} 
@@ -344,6 +364,7 @@ const App: React.FC = () => {
             {isModalOpen && sessionToUpdate && (
                 <UpdateModal 
                     session={sessionToUpdate} 
+                    allSessions={allSessions}
                     onClose={() => setIsModalOpen(false)} 
                     onUpdate={async (upd) => {
                         await updateSession(sessionToUpdate.id, upd);
@@ -356,6 +377,7 @@ const App: React.FC = () => {
             {isViewModalOpen && sessionToView && (
                 <ViewModal 
                     session={sessionToView} 
+                    allSessions={allSessions}
                     onClose={() => setIsViewModalOpen(false)} 
                 />
             )}

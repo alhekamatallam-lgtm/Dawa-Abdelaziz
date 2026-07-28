@@ -1,13 +1,20 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { CaseSession } from '../types';
+import { isAppealCase, getPreviousRulingForViolation } from '../utils/caseHelpers';
 
 interface ViewModalProps {
     session: CaseSession;
+    allSessions?: CaseSession[];
     onClose: () => void;
 }
 
-const ViewModal: React.FC<ViewModalProps> = ({ session, onClose }) => {
+const ViewModal: React.FC<ViewModalProps> = ({ session, allSessions = [], onClose }) => {
+    const isAppeal = useMemo(() => isAppealCase(session['نوع الدعوى']), [session]);
+    const previousRulingInfo = useMemo(() => {
+        if (!isAppeal || !allSessions || allSessions.length === 0) return { session: null, text: '' };
+        return getPreviousRulingForViolation(allSessions, session['رقم المخالفة'], session['رقم الدعوى']);
+    }, [isAppeal, allSessions, session]);
     // Re-ordered to match the visual layout in the image
     const details = [
         { label: 'رقم الدعوى', value: session['رقم الدعوى'] },
@@ -64,6 +71,22 @@ const ViewModal: React.FC<ViewModalProps> = ({ session, onClose }) => {
                             </div>
                         ))}
                     </div>
+
+                    {/* Previous Ruling for Appeal Cases */}
+                    {isAppeal && (
+                        <div className="mt-6 p-4 bg-amber-50 rounded-2xl border border-amber-200 text-right">
+                            <label className="text-xs font-black text-amber-900 mb-2 block">نص الحكم السابق (من الدعوى الابتدائية)</label>
+                            {previousRulingInfo.text ? (
+                                <div className="text-xs sm:text-sm text-dark bg-white p-4 rounded-xl border border-amber-200/80 shadow-inner whitespace-pre-wrap leading-relaxed">
+                                    {previousRulingInfo.text}
+                                </div>
+                            ) : (
+                                <p className="text-xs font-bold text-amber-800/70 italic">
+                                    لم يتم العثور على محضر جلسة سابق مسجل لهذه المخالفة.
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     {/* Post-Session Info Section */}
                     {showPostSessionInfo && (

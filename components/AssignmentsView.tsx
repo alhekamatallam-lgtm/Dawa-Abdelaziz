@@ -81,8 +81,8 @@ const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({ label, options, s
                                 <span className="text-xs">الكل</span>
                             </label>
                         </li>
-                        {options.map(option => (
-                            <li key={option}>
+                        {options.map((option, index) => (
+                            <li key={`${option}-${index}`}>
                                 <label className="flex items-center gap-2 p-2 rounded-md hover:bg-light cursor-pointer">
                                     <input
                                         type="checkbox"
@@ -146,12 +146,15 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     const [pendingDates, setPendingDates] = useState<string[]>([]);
     const [pendingPlaintiffs, setPendingPlaintiffs] = useState<string[]>([]);
     const [pendingCaseTypes, setPendingCaseTypes] = useState<string[]>([]);
+    const [pendingCourts, setPendingCourts] = useState<string[]>([]);
 
     const [appliedCircuits, setAppliedCircuits] = useState<string[]>([]);
     const [appliedLawyers, setAppliedLawyers] = useState<string[]>([]);
     const [appliedDates, setAppliedDates] = useState<string[]>([]);
     const [appliedPlaintiffs, setAppliedPlaintiffs] = useState<string[]>([]);
     const [appliedCaseTypes, setAppliedCaseTypes] = useState<string[]>([]);
+    const [appliedCourts, setAppliedCourts] = useState<string[]>([]);
+    const [sortBy, setSortBy] = useState<string>('datetime');
 
     // Removed automatic "Select All" initialization to keep table empty by default
     // as per user request.
@@ -169,6 +172,8 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         setAppliedPlaintiffs([]);
         setPendingCaseTypes([]);
         setAppliedCaseTypes([]);
+        setPendingCourts([]);
+        setAppliedCourts([]);
     }, [lawyerFilter]);
 
     useEffect(() => {
@@ -184,6 +189,8 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         setAppliedLawyers([]);
         setPendingCaseTypes([]);
         setAppliedCaseTypes([]);
+        setPendingCourts([]);
+        setAppliedCourts([]);
     }, [plaintiffFilter]);
     
     useEffect(() => {
@@ -198,8 +205,9 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                JSON.stringify(pendingLawyers) !== JSON.stringify(appliedLawyers) ||
                JSON.stringify(pendingDates) !== JSON.stringify(appliedDates) ||
                JSON.stringify(pendingPlaintiffs) !== JSON.stringify(appliedPlaintiffs) ||
-               JSON.stringify(pendingCaseTypes) !== JSON.stringify(appliedCaseTypes);
-    }, [pendingCircuits, appliedCircuits, pendingLawyers, appliedLawyers, pendingDates, appliedDates, pendingPlaintiffs, appliedPlaintiffs, pendingCaseTypes, appliedCaseTypes]);
+               JSON.stringify(pendingCaseTypes) !== JSON.stringify(appliedCaseTypes) ||
+               JSON.stringify(pendingCourts) !== JSON.stringify(appliedCourts);
+    }, [pendingCircuits, appliedCircuits, pendingLawyers, appliedLawyers, pendingDates, appliedDates, pendingPlaintiffs, appliedPlaintiffs, pendingCaseTypes, appliedCaseTypes, pendingCourts, appliedCourts]);
 
     const handleApplyFilters = () => {
         setAppliedCircuits([...pendingCircuits]);
@@ -207,7 +215,13 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         setAppliedDates([...pendingDates]);
         setAppliedPlaintiffs([...pendingPlaintiffs]);
         setAppliedCaseTypes([...pendingCaseTypes]);
+        setAppliedCourts([...pendingCourts]);
     };
+
+    const uniqueCourts = useMemo(() => {
+        const courts = sessions.map(s => (s['المحكمة'] || '').trim()).filter(Boolean);
+        return Array.from(new Set(courts)).sort();
+    }, [sessions]);
 
     const uniqueCircuits = useMemo(() => {
         const circuits = sessions.map(s => (s['الدائرة'] || '').trim()).filter(Boolean);
@@ -274,6 +288,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                                 appliedPlaintiffs.length > 0 || 
                                 appliedLawyers.length > 0 || 
                                 appliedCaseTypes.length > 0 ||
+                                appliedCourts.length > 0 ||
                                 searchQuery.trim() !== '' || 
                                 !!specialFilter || 
                                 !!lawyerFilter || 
@@ -324,7 +339,10 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
             });
         }
         
-        // 3. Other Filters (Circuits, Dates, Plaintiffs, Lawyers, Case Types)
+        // 3. Other Filters (Circuits, Dates, Plaintiffs, Lawyers, Case Types, Courts)
+        if (appliedCourts.length > 0) {
+            filtered = filtered.filter(s => appliedCourts.includes((s['المحكمة'] || '').trim()));
+        }
         if (appliedCircuits.length > 0) {
             filtered = filtered.filter(s => appliedCircuits.includes((s['الدائرة'] || '').trim()));
         }
@@ -349,7 +367,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         if (showOnlyConflicts) filtered = filtered.filter(s => entitySpecificConflictIds.has(s.id));
         
         return filtered;
-    }, [allSessions, sessions, filters, appliedCircuits, appliedDates, appliedPlaintiffs, appliedLawyers, appliedCaseTypes, searchQuery, entitySpecificConflictIds, specialFilter, lawyerFilter, plaintiffFilter, showOnlyConflicts]);
+    }, [allSessions, sessions, filters, appliedCircuits, appliedDates, appliedPlaintiffs, appliedLawyers, appliedCaseTypes, appliedCourts, searchQuery, entitySpecificConflictIds, specialFilter, lawyerFilter, plaintiffFilter, showOnlyConflicts]);
     
     const dynamicContent = useMemo(() => {
         if (specialFilter === 'correctly_linked') return { title: 'الجلسات الصحيحة', subtitle: 'عرض الجلسات المكتملة البيانات والفريدة.' };
@@ -357,7 +375,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         if (specialFilter === 'duplicates') return { title: 'الجلسات المكررة', subtitle: 'جلسات لها نفس رقم الدعوى أو رقم المخالفة.' };
         if (plaintiffFilter) return { title: `قضايا المدعي: ${plaintiffFilter}`, subtitle: `عرض جميع القضايا المرتبطة بهذا المدعي.` };
         if (lawyerFilter) return { title: `جلسات المحامي: ${lawyerFilter}`, subtitle: `عرض جميع الجلسات المكلف بها هذا المحامي.` };
-        return { title: 'جدول كافة التكليفات', subtitle: 'إدارة وتصفية مهام أعضاء المكتب' };
+        return { title: 'جدول كافة الجلسات', subtitle: 'إدارة وتصفية جلسات أعضاء المكتب' };
     }, [filters]);
 
     const handleResetFilters = (clearSpecial = true) => {
@@ -371,6 +389,9 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         setAppliedPlaintiffs([]);
         setPendingCaseTypes([]);
         setAppliedCaseTypes([]);
+        setPendingCourts([]);
+        setAppliedCourts([]);
+        setSortBy('datetime');
         onSearchChange('');
         if (clearSpecial) onClearFilters();
     };
@@ -407,11 +428,29 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-primary opacity-50"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
                         </div>
                     </div>
+                    <MultiSelectFilter label="المحاكم" options={uniqueCourts} selectedOptions={pendingCourts} onChange={setPendingCourts} />
                     <MultiSelectFilter label="أنواع الدعاوى" options={uniqueCaseTypes} selectedOptions={pendingCaseTypes} onChange={setPendingCaseTypes} />
                     <MultiSelectFilter label="التواريخ" options={uniqueDates} selectedOptions={pendingDates} onChange={setPendingDates} />
                     <MultiSelectFilter label="الدوائر" options={uniqueCircuits} selectedOptions={pendingCircuits} onChange={setPendingCircuits} />
                     <MultiSelectFilter label="المدعين" options={uniquePlaintiffs} selectedOptions={pendingPlaintiffs} onChange={setPendingPlaintiffs} disabled={!!plaintiffFilter} />
                     <MultiSelectFilter label="المكلفين" options={uniqueLawyers} selectedOptions={pendingLawyers} onChange={setPendingLawyers} disabled={!!lawyerFilter} />
+
+                    <div className="flex flex-col min-w-[140px]">
+                        <label className="text-[10px] font-bold text-text mb-1 mr-1">الفرز والترتيب</label>
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            className="w-full bg-light border border-border rounded-lg px-3 py-2 text-xs font-bold text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all h-[34px] cursor-pointer"
+                        >
+                            <option value="datetime">التاريخ والوقت</option>
+                            <option value="court">المحكمة</option>
+                            <option value="caseType">نوع الدعوى</option>
+                            <option value="caseNumber">رقم الدعوى</option>
+                            <option value="sessionNumber">رقم الجلسة</option>
+                            <option value="circuit">الدائرة</option>
+                            <option value="lawyer">المكلف</option>
+                        </select>
+                    </div>
 
                     <div className="flex items-center gap-2">
                         <button 
@@ -449,7 +488,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
             )}
             
             <div className="min-h-[300px]">
-                <SessionTable sessions={filteredSessions} onUpdateClick={onUpdateClick} onViewClick={onViewClick} showDateColumn={true} conflictingSessionIds={entitySpecificConflictIds}/>
+                <SessionTable sessions={filteredSessions} onUpdateClick={onUpdateClick} onViewClick={onViewClick} showDateColumn={true} conflictingSessionIds={entitySpecificConflictIds} sortBy={sortBy}/>
                 {filteredSessions.length === 0 && (
                     <div className="py-20 text-center bg-light/30 rounded-xl border-2 border-dashed border-border mt-2">
                         <div className="bg-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-border"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg></div>

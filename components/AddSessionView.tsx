@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import type { CaseSession, User } from '../types';
 import { SearchIcon, PlusIcon, CheckIcon, ClipboardDocumentIcon, UserIcon, BriefcaseIcon, AcademicCapIcon, MapPinIcon, ScaleIcon } from './icons';
+import { getCaseStatusOptions, isAppealCase, getPreviousRulingForViolation } from '../utils/caseHelpers';
 
 interface AddSessionViewProps {
     allSessions: CaseSession[];
@@ -16,15 +17,6 @@ const SESSION_NUMBERS = [
 ];
 
 const ATTENDANCE_OPTIONS = ['حضرت', 'لم أحضر'];
-const CASE_STATUS_OPTIONS = [
-    'تحت الإجراء',
-    'محكومة',
-    'مغلقة',
-    'عدم القبول',
-    'تأجيل الجلسة',
-    'إلغاء القرار',
-    'تنفيذ حكم إلغاء القرار'
-];
 
 const AddSessionView: React.FC<AddSessionViewProps> = ({ allSessions, currentUser, onAddSession }) => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -41,6 +33,17 @@ const AddSessionView: React.FC<AddSessionViewProps> = ({ allSessions, currentUse
     const [precedents, setPrecedents] = useState(false);
     const [status, setStatus] = useState('');
     const [reason, setReason] = useState('');
+
+    const isAppeal = useMemo(() => foundCase ? isAppealCase(foundCase["نوع الدعوى"]) : false, [foundCase]);
+
+    const caseStatusOptions = useMemo(() => {
+        return getCaseStatusOptions(foundCase?.["نوع الدعوى"]);
+    }, [foundCase]);
+
+    const previousRulingInfo = useMemo(() => {
+        if (!foundCase) return { session: null, text: '' };
+        return getPreviousRulingForViolation(allSessions, foundCase["رقم المخالفة"], foundCase["رقم الدعوى"]);
+    }, [foundCase, allSessions]);
 
     const handleSearch = () => {
         if (!searchQuery.trim()) return;
@@ -254,7 +257,7 @@ const AddSessionView: React.FC<AddSessionViewProps> = ({ allSessions, currentUse
                                         className="w-full bg-[#f8f7f4] border-2 border-transparent focus:border-primary focus:bg-white rounded-2xl p-4 font-bold text-dark transition-all outline-none appearance-none cursor-pointer"
                                     >
                                         <option value="">اختر حالة الدعوى (اختياري)</option>
-                                        {CASE_STATUS_OPTIONS.map(opt => (
+                                        {caseStatusOptions.map(opt => (
                                             <option key={opt} value={opt}>{opt}</option>
                                         ))}
                                     </select>
@@ -271,6 +274,25 @@ const AddSessionView: React.FC<AddSessionViewProps> = ({ allSessions, currentUse
                                         className="w-full bg-[#f8f7f4] border-2 border-transparent focus:border-primary focus:bg-white rounded-2xl p-4 font-bold text-dark transition-all outline-none"
                                     />
                                 </div>
+
+                                {/* Previous Ruling Display for Appeals */}
+                                {isAppeal && (
+                                    <div className="md:col-span-2 bg-amber-50/80 p-5 rounded-2xl border border-amber-200/80 space-y-2">
+                                        <label className="block text-sm font-black text-amber-900 flex items-center gap-2">
+                                            <ScaleIcon className="w-5 h-5 text-amber-700" />
+                                            نص الحكم السابق (من المحضر الابتدائي - رقم المخالفة: {foundCase["رقم المخالفة"] || '-'})
+                                        </label>
+                                        {previousRulingInfo.text ? (
+                                            <div className="bg-white p-4 rounded-xl border border-amber-200 text-dark font-medium text-xs md:text-sm whitespace-pre-wrap leading-relaxed shadow-inner">
+                                                {previousRulingInfo.text}
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs font-bold text-amber-800/70 italic">
+                                                لم يتم العثور على محضر جلسة سابق أو حكم ابتدائي مسجل لهذه المخالفة.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
 
                                 {/* Precedents Checkbox */}
                                 <div className="md:col-span-2">

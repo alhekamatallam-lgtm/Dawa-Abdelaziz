@@ -66,11 +66,11 @@ const QualityResultsView: React.FC<QualityResultsViewProps> = ({ sessions, filte
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-                {filteredSessions.map((session) => {
+                {filteredSessions.map((session, index) => {
                     const isNoShow = session['حضور الجلسة'] === 'لم أحضر';
                     return (
                         <div 
-                            key={session.id}
+                            key={`${session.id}-${index}`}
                             onClick={() => onViewClick(session)}
                             className={`${isNoShow ? 'bg-red-50/50 border-red-200' : 'bg-white border-border'} border rounded-2xl p-5 hover:shadow-md transition-all cursor-pointer group relative overflow-hidden`}
                         >

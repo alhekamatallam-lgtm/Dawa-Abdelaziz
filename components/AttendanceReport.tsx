@@ -7,17 +7,35 @@ import { utils, writeFile } from 'xlsx';
 interface AttendanceReportProps {
     sessions: CaseSession[];
     onSessionClick?: (session: CaseSession) => void;
+    title?: string;
+    subtitle?: string;
+    caseTypeFilter?: string;
 }
 
-const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSessionClick }) => {
+const AttendanceReport: React.FC<AttendanceReportProps> = ({ 
+    sessions, 
+    onSessionClick,
+    title = "تقرير حضور الجلسات",
+    subtitle = "استعراض الجلسات التي تم حضورها ومحاضرها المسجلة",
+    caseTypeFilter
+}) => {
     const [isSummaryOpen, setIsSummaryOpen] = useState(false);
     const [isCancelledOpen, setIsCancelledOpen] = useState(false);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [printMode, setPrintMode] = useState<'all' | 'annulment' | 'dashboard'>('all');
 
+    const relevantSessions = useMemo(() => {
+        if (!caseTypeFilter) return sessions;
+        const target = caseTypeFilter.trim().toLowerCase();
+        return sessions.filter(s => {
+            const ct = (s['نوع الدعوى'] || '').toString().trim().toLowerCase();
+            return ct.includes(target);
+        });
+    }, [sessions, caseTypeFilter]);
+
     const attendedSessions = useMemo(() => {
-        return sessions.filter(s => s['حضور الجلسة'] === 'حضرت');
-    }, [sessions]);
+        return relevantSessions.filter(s => s['حضور الجلسة'] === 'حضرت');
+    }, [relevantSessions]);
 
     const normalizeNumber = (val: any): number => {
         if (typeof val === 'number') return val;
@@ -56,7 +74,7 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
     };
 
     const stats = useMemo(() => {
-        const attendedSessionsRaw = sessions.filter(s => {
+        const attendedSessionsRaw = relevantSessions.filter(s => {
             const status = s['حضور الجلسة']?.toString().trim();
             return status === 'حضرت' || status === 'حضر' || status === 'تم الحضور';
         });
@@ -67,7 +85,7 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
         
         // Detailed stats for each case status matching the technical analysis image
         const getStatusStats = (statusNames: string[]) => {
-            const list = sessions.filter(s => {
+            const list = relevantSessions.filter(s => {
                 const sStatus = s['حالة_الدعوى']?.toString().trim();
                 return statusNames.includes(sStatus);
             });
@@ -122,14 +140,14 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
 
         // Count unique violations (رقم المخالفة) in the entire dataset
         const uniqueViolationsList = Array.from(new Set(
-            sessions
+            relevantSessions
                 .map(s => s['رقم المخالفة']?.toString().trim())
                 .filter(v => v !== undefined && v !== null && v !== '')
         ));
         const uniqueViolations = uniqueViolationsList.length;
         
         // Count entries that are not entirely empty (aligning with total records 780)
-        const sessionsWithNumber = sessions.filter(s => 
+        const sessionsWithNumber = relevantSessions.filter(s => 
             (s['رقم الدعوى'] && s['رقم الدعوى'].toString().trim() !== '') ||
             (s['تاريخ الموعد'] && s['تاريخ الموعد'].toString().trim() !== '') ||
             (s['رقم المخالفة'] && s['رقم المخالفة'].toString().trim() !== '')
@@ -137,7 +155,7 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
 
         // Count unique cases (رقم الدعوى) in the entire dataset
         const uniqueCases = new Set(
-            sessions
+            relevantSessions
                 .map(s => s['رقم الدعوى']?.toString().trim())
                 .filter(v => v !== undefined && v !== null && v !== '')
         ).size;
@@ -146,7 +164,7 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
         // Rule: For each unique violation number, take the HIGHEST value encountered.
         // This ensures updates or multiple sessions don't dilute the reported violation amount.
         const uniqueViolationEntries = new Map<string, number>();
-        sessions.forEach(s => {
+        relevantSessions.forEach(s => {
             const vId = s['رقم المخالفة']?.toString().trim();
             if (vId && vId !== '') {
                 const val = normalizeNumber(s['قيمة المخالفة']);
@@ -184,7 +202,7 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
             refusal,
             duplicateViolationIdsInAnnulment
         };
-    }, [sessions]);
+    }, [relevantSessions]);
 
     const [showZeroValuePopover, setShowZeroValuePopover] = useState(false);
     const [showDuplicatesPopover, setShowDuplicatesPopover] = useState(false);
@@ -264,8 +282,8 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                         <CheckCircleIcon className="w-10 h-10 text-primary" />
                     </div>
                     <div>
-                        <h2 className="text-3xl font-black text-dark tracking-tight">تقرير حضور الجلسات</h2>
-                        <p className="text-dark/60 font-medium">استعراض الجلسات التي تم حضورها ومحاضرها المسجلة</p>
+                        <h2 className="text-3xl font-black text-dark tracking-tight">{title}</h2>
+                        <p className="text-dark/60 font-medium">{subtitle}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -631,7 +649,7 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                 ) : printMode === 'all' ? (
                     <>
                         <div className="text-center mt-6 space-y-2 border-b-2 border-primary pb-6">
-                            <h1 className="text-3xl font-black text-dark">تقرير حضور الجلسات</h1>
+                            <h1 className="text-3xl font-black text-dark">{title}</h1>
                             <div className="flex justify-center gap-12 mt-4">
                                 <div className="text-center">
                                     <p className="text-[10px] font-bold text-text/50 uppercase">إجمالي الجلسات المحضورة</p>
@@ -661,8 +679,8 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                                 </tr>
                             </thead>
                             <tbody>
-                                {attendedSessions.map((session) => (
-                                    <tr key={session.id} className="print:break-inside-avoid">
+                                {attendedSessions.map((session, index) => (
+                                    <tr key={`${session.id}-${index}`} className="print:break-inside-avoid">
                                         <td className="border border-border p-4 text-sm font-bold text-dark">#{session['رقم الدعوى']}</td>
                                         <td className="border border-border p-4 text-sm font-bold text-dark">{session['رقم المخالفة'] || '-'}</td>
                                         <td className="border border-border p-4 text-sm font-bold text-dark">{session['المدعي']}</td>
@@ -718,8 +736,8 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                                 </tr>
                             </thead>
                             <tbody>
-                                {stats.cancelledDecisionSessions.map((session) => (
-                                    <tr key={session.id} className="print:break-inside-avoid">
+                                {stats.cancelledDecisionSessions.map((session, index) => (
+                                    <tr key={`${session.id}-${index}`} className="print:break-inside-avoid">
                                         <td className="border border-border p-4 text-sm font-bold text-dark">#{session['رقم الدعوى']}</td>
                                         <td className="border border-border p-4 text-sm font-bold text-dark">{session['رقم المخالفة'] || '-'}</td>
                                         <td className="border border-border p-4 text-sm font-bold text-dark">{session['المدعي']}</td>
@@ -805,8 +823,8 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                                         <td colSpan={6} className="p-8 text-center text-text/50 font-bold">لا توجد بيانات للعرض</td>
                                     </tr>
                                 ) : (
-                                    attendedSessions.map((session) => (
-                                        <tr key={session.id} className="hover:bg-light/50 transition-colors border-b border-border last:border-0">
+                                    attendedSessions.map((session, index) => (
+                                        <tr key={`${session.id}-${index}`} className="hover:bg-light/50 transition-colors border-b border-border last:border-0">
                                             <td className="p-4 text-sm font-bold text-dark">#{session['رقم الدعوى']}</td>
                                             <td className="p-4 text-sm font-bold text-text/70">{session['رقم المخالفة'] || '-'}</td>
                                             <td className="p-4 text-sm font-bold text-dark">{session['المدعي']}</td>
@@ -911,8 +929,8 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                                         <td colSpan={6} className="p-8 text-center text-text/50 font-bold">لا توجد قرارات ملغاة حالياً</td>
                                     </tr>
                                 ) : (
-                                    stats.cancelledDecisionSessions.map((session) => (
-                                        <tr key={session.id} className="hover:bg-green-50/30 transition-colors border-b border-border last:border-0">
+                                    stats.cancelledDecisionSessions.map((session, index) => (
+                                        <tr key={`${session.id}-${index}`} className="hover:bg-green-50/30 transition-colors border-b border-border last:border-0">
                                             <td className="p-4 text-sm font-bold text-dark">#{session['رقم الدعوى']}</td>
                                             <td className="p-4 text-sm font-bold text-text/70">{session['رقم المخالفة'] || '-'}</td>
                                             <td className="p-4 text-sm font-bold text-dark">{session['المدعي']}</td>
@@ -950,9 +968,9 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({ sessions, onSession
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-6 mt-6">
-                            {attendedSessions.map((session) => (
+                            {attendedSessions.map((session, index) => (
                                 <div 
-                                    key={session.id}
+                                    key={`${session.id}-${index}`}
                                     onClick={() => onSessionClick?.(session)}
                                     className="bg-white rounded-[2rem] border border-border shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden group"
                                 >

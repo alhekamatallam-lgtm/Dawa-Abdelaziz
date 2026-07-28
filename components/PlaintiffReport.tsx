@@ -87,9 +87,9 @@ const PlaintiffReport: React.FC<PlaintiffReportProps> = ({ sessions, onPlaintiff
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {plaintiffData.map(plaintiff => (
+                {plaintiffData.map((plaintiff, index) => (
                     <div 
-                        key={plaintiff.name} 
+                        key={`${plaintiff.name}-${index}`} 
                         className={`group bg-white rounded-2xl shadow-sm border-2 transition-all duration-300 hover:shadow-xl ${plaintiff.conflicts.count > 0 ? 'border-red-100 hover:border-red-300' : 'border-transparent hover:border-primary'}`}
                     >
                         <div className="p-5 border-b border-border">
