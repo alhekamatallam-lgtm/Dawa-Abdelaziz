@@ -274,6 +274,17 @@ const UnappealedAnnulmentsReport: React.FC<UnappealedAnnulmentsReportProps> = ({
 
     return (
         <div className="space-y-8 animate-in fade-in duration-300">
+            {/* Print Header (Visible only when printing) */}
+            <div className="hidden print:block text-center border-b-2 border-emerald-600 pb-4 mb-4">
+                <h1 className="text-2xl font-black text-dark">تقرير دعاوى إلغاء القرار التي لم تُستأنف</h1>
+                <p className="text-xs font-bold text-dark/70 mt-1">مكتب المحامي عبد الله سعود آل سعد للمحاماة والاستشارات القانونية</p>
+                <div className="flex justify-between items-center text-[10px] font-bold text-dark/60 mt-3 px-2">
+                    <span>إجمالي الدعاوى المطابقة: {filteredSessions.length}</span>
+                    <span>مجموع مبالغ المخالفات: {formatCurrency(stats.totalUnappealedValue)} ر.س</span>
+                    <span>تاريخ التقرير: {new Date().toLocaleDateString('ar-SA')}</span>
+                </div>
+            </div>
+
             {/* Header section (screen mode) */}
             <div className="bg-white p-6 md:p-8 rounded-3xl border border-border shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 print:hidden">
                 <div className="flex items-center gap-4">
@@ -329,8 +340,8 @@ const UnappealedAnnulmentsReport: React.FC<UnappealedAnnulmentsReportProps> = ({
                 </div>
             </div>
 
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 print:hidden">
+            {/* KPI Cards (Visible on screen and in print) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 print:grid print:grid-cols-4 print:gap-3 print:mb-6">
                 <StatCard 
                     title="إجمالي أحكام الإلغاء الغير مستأنفة" 
                     value={stats.unappealedCount}
@@ -477,17 +488,6 @@ const UnappealedAnnulmentsReport: React.FC<UnappealedAnnulmentsReportProps> = ({
                         </button>
                     </div>
                 )}
-            </div>
-
-            {/* Print Header (Visible only when printing) */}
-            <div className="hidden print:block text-center border-b-2 border-emerald-600 pb-4 mb-6">
-                <h1 className="text-2xl font-black text-dark">تقرير دعاوى إلغاء القرار التي لم تُستأنف</h1>
-                <p className="text-xs font-bold text-dark/70 mt-1">مكتب المحامي عبد الله سعود آل سعد للمحاماة والاستشارات القانونية</p>
-                <div className="flex justify-between items-center text-[10px] font-bold text-dark/60 mt-4 px-2">
-                    <span>إجمالي الدعاوى: {filteredSessions.length}</span>
-                    <span>مجموع مبالغ المخالفات: {formatCurrency(stats.totalUnappealedValue)} ر.س</span>
-                    <span>تاريخ التقرير: {new Date().toLocaleDateString('ar-SA')}</span>
-                </div>
             </div>
 
             {/* Sessions Table View */}

@@ -86,8 +86,8 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
         // Detailed stats for each case status matching the technical analysis image
         const getStatusStats = (statusNames: string[]) => {
             const list = relevantSessions.filter(s => {
-                const sStatus = s['حالة_الدعوى']?.toString().trim();
-                return statusNames.includes(sStatus);
+                const sStatus = s['حالة_الدعوى']?.toString().trim() || '';
+                return statusNames.some(name => sStatus === name || sStatus.includes(name));
             });
             
             const rows = list.length;
@@ -108,7 +108,7 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
             return { rows, uniqueCount, totalVal, list };
         };
 
-        const annulment = getStatusStats(['إلغاء القرار', 'تنفيذ حكم إلغاء القرار']);
+        const annulment = getStatusStats(['إلغاء القرار', 'تنفيذ حكم إلغاء القرار', 'إلغاء القرار(حكم الاستئناف)']);
         const adjournment = getStatusStats(['تأجيل الجلسة', 'تأجيل']);
         const nonAcceptance = getStatusStats(['عدم القبول', 'حكم بعدم القبول']);
         const refusal = getStatusStats(['رفض الدعوى', 'رفض']);
