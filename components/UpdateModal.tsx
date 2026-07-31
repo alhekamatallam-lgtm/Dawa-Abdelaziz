@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import type { CaseSession } from '../types';
 import { getCaseStatusOptions, isAppealCase, getPreviousRulingForViolation } from '../utils/caseHelpers';
-import { ScaleIcon } from './icons';
+import { ScaleIcon, CalendarIcon } from './icons';
 
 interface UpdateModalProps {
     session: CaseSession;
@@ -82,11 +82,19 @@ const UpdateModal: React.FC<UpdateModalProps> = ({ session, allSessions = [], on
 
                     {/* Previous Ruling Display for Appeals */}
                     {isAppeal && (
-                        <div className="bg-amber-50/80 p-4 rounded-xl border border-amber-200/80 space-y-1.5">
-                            <label className="block text-xs font-black text-amber-900 flex items-center gap-2">
-                                <ScaleIcon className="w-4 h-4 text-amber-700" />
-                                نص الحكم السابق (من المحضر الابتدائي - رقم المخالفة: {session['رقم المخالفة'] || '-'})
-                            </label>
+                        <div className="bg-amber-50/80 p-4 rounded-xl border border-amber-200/80 space-y-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-amber-200/60 pb-2">
+                                <label className="text-xs font-black text-amber-900 flex items-center gap-2">
+                                    <ScaleIcon className="w-4 h-4 text-amber-700" />
+                                    نص الحكم السابق (من المحضر الابتدائي - رقم المخالفة: {session['رقم المخالفة'] || '-'})
+                                </label>
+                                {previousRulingInfo.rulingDate && (
+                                    <div className="flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-100/90 px-2.5 py-0.5 rounded-md border border-amber-300/60 w-fit">
+                                        <CalendarIcon className="w-3.5 h-3.5 text-amber-700" />
+                                        <span>تاريخ الحكم السابق: {previousRulingInfo.rulingDate}</span>
+                                    </div>
+                                )}
+                            </div>
                             {previousRulingInfo.text ? (
                                 <div className="bg-white p-3 rounded-lg border border-amber-200 text-dark font-medium text-xs whitespace-pre-wrap leading-relaxed shadow-inner">
                                     {previousRulingInfo.text}

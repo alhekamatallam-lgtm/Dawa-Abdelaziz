@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { CaseSession, User } from '../types';
-import { SearchIcon, PlusIcon, CheckIcon, ClipboardDocumentIcon, UserIcon, BriefcaseIcon, AcademicCapIcon, MapPinIcon, ScaleIcon } from './icons';
+import { SearchIcon, PlusIcon, CheckIcon, ClipboardDocumentIcon, UserIcon, BriefcaseIcon, AcademicCapIcon, MapPinIcon, ScaleIcon, CalendarIcon } from './icons';
 import { getCaseStatusOptions, isAppealCase, getPreviousRulingForViolation } from '../utils/caseHelpers';
 
 interface AddSessionViewProps {
@@ -277,11 +277,19 @@ const AddSessionView: React.FC<AddSessionViewProps> = ({ allSessions, currentUse
 
                                 {/* Previous Ruling Display for Appeals */}
                                 {isAppeal && (
-                                    <div className="md:col-span-2 bg-amber-50/80 p-5 rounded-2xl border border-amber-200/80 space-y-2">
-                                        <label className="block text-sm font-black text-amber-900 flex items-center gap-2">
-                                            <ScaleIcon className="w-5 h-5 text-amber-700" />
-                                            نص الحكم السابق (من المحضر الابتدائي - رقم المخالفة: {foundCase["رقم المخالفة"] || '-'})
-                                        </label>
+                                    <div className="md:col-span-2 bg-amber-50/80 p-5 rounded-2xl border border-amber-200/80 space-y-3">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/60 pb-2">
+                                            <label className="text-sm font-black text-amber-900 flex items-center gap-2">
+                                                <ScaleIcon className="w-5 h-5 text-amber-700" />
+                                                نص الحكم السابق (من المحضر الابتدائي - رقم المخالفة: {foundCase["رقم المخالفة"] || '-'})
+                                            </label>
+                                            {previousRulingInfo.rulingDate && (
+                                                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 bg-amber-100/90 px-3 py-1 rounded-lg border border-amber-300/60 w-fit">
+                                                    <CalendarIcon className="w-4 h-4 text-amber-700" />
+                                                    <span>تاريخ الحكم السابق: {previousRulingInfo.rulingDate}</span>
+                                                </div>
+                                            )}
+                                        </div>
                                         {previousRulingInfo.text ? (
                                             <div className="bg-white p-4 rounded-xl border border-amber-200 text-dark font-medium text-xs md:text-sm whitespace-pre-wrap leading-relaxed shadow-inner">
                                                 {previousRulingInfo.text}

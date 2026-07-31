@@ -2,6 +2,7 @@
 import React, { useMemo } from 'react';
 import type { CaseSession } from '../types';
 import { isAppealCase, getPreviousRulingForViolation } from '../utils/caseHelpers';
+import { ScaleIcon, CalendarIcon } from './icons';
 
 interface ViewModalProps {
     session: CaseSession;
@@ -74,8 +75,19 @@ const ViewModal: React.FC<ViewModalProps> = ({ session, allSessions = [], onClos
 
                     {/* Previous Ruling for Appeal Cases */}
                     {isAppeal && (
-                        <div className="mt-6 p-4 bg-amber-50 rounded-2xl border border-amber-200 text-right">
-                            <label className="text-xs font-black text-amber-900 mb-2 block">نص الحكم السابق (من الدعوى الابتدائية)</label>
+                        <div className="mt-6 p-4 bg-amber-50 rounded-2xl border border-amber-200 text-right space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/60 pb-2">
+                                <label className="text-xs font-black text-amber-900 flex items-center gap-2">
+                                    <ScaleIcon className="w-4 h-4 text-amber-700" />
+                                    نص الحكم السابق (من المحضر الابتدائي - رقم المخالفة: {session['رقم المخالفة'] || '-'})
+                                </label>
+                                {previousRulingInfo.rulingDate && (
+                                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 bg-amber-100/90 px-3 py-1 rounded-lg border border-amber-300/60 w-fit">
+                                        <CalendarIcon className="w-4 h-4 text-amber-700" />
+                                        <span>تاريخ الحكم السابق: {previousRulingInfo.rulingDate}</span>
+                                    </div>
+                                )}
+                            </div>
                             {previousRulingInfo.text ? (
                                 <div className="text-xs sm:text-sm text-dark bg-white p-4 rounded-xl border border-amber-200/80 shadow-inner whitespace-pre-wrap leading-relaxed">
                                     {previousRulingInfo.text}

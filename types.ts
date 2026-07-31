@@ -31,6 +31,8 @@ export interface CaseSession {
   "اضافة_السوابق_القضائية"?: string;
   "قيمة المخالفة"?: string | number;
   "التصنيف"?: string;
+  "طلب_استئناف"?: string;
+  "البحث_عن_الدعوى"?: string;
 }
 
 export interface SessionsByDate {
