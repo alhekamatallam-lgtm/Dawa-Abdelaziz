@@ -186,7 +186,7 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
             totalAttended, 
             withMinutes, 
             withoutMinutes, 
-            cancelledDecisionCount: annulment.rows, // 99 rows matches technical analysis
+            cancelledDecisionCount: cancelledDecisionSessions.length, // unique count of decisions without postponed duplicates
             cancelledDecisionSessions,
             uniqueViolations, // should be 337
             uniqueCases, // should be 396
@@ -350,7 +350,7 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
                             <span className="text-sm font-bold opacity-70">({formatCurrency(stats.totalCancelledValue)} ر.س)</span>
                         </div>
                     } 
-                    subtitle="إجمالي القرارات الملغاة" 
+                    subtitle="إجمالي القرارات الملغاة (فريدة)" 
                     theme="green"
                 />
                 {/* 6. قيمة المخالفات */}
@@ -567,7 +567,7 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
                             <PrintStatBox 
                                 title="توثيق الأحكام الصادرة بالإلغاء" 
                                 value={`${stats.cancelledDecisionCount} (${formatCurrency(stats.totalCancelledValue)} ر.س)`} 
-                                subtitle="إجمالي القرارات الملغاة" 
+                                subtitle="إجمالي القرارات الملغاة (فريدة)" 
                                 color="#c50000" 
                             />
                             <PrintStatBox 
