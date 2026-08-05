@@ -26,6 +26,15 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, subtitle, icon, color
     const hoverClasses = onClick ? 'hover:shadow-lg hover:-translate-y-1 transform transition-all' : '';
     const cursorClass = onClick ? 'cursor-pointer' : '';
 
+    const renderIcon = () => {
+        if (React.isValidElement(icon)) return icon;
+        if (typeof icon === 'function') {
+            const IconComponent = icon as React.ComponentType<{ className?: string }>;
+            return <IconComponent className="w-6 h-6" />;
+        }
+        return icon;
+    };
+
     return (
         <div 
             className={`bg-white p-6 rounded-2xl border border-border flex items-center space-x-4 space-x-reverse ${activeClasses} ${hoverClasses} ${cursorClass}`}
@@ -36,7 +45,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, subtitle, icon, color
             aria-pressed={isActive}
         >
             <div className={`p-3.5 rounded-2xl text-white ${colorScheme.bg} shrink-0`}>
-                {icon}
+                {renderIcon()}
             </div>
             <div className="text-right flex-1">
                 <p className="text-dark/60 text-xs font-bold">{title}</p>

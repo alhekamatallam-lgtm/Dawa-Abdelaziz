@@ -1,7 +1,7 @@
 
 import React, { useMemo } from 'react';
 import type { CaseSession } from '../types';
-import { isAppealCase, getPreviousRulingForViolation } from '../utils/caseHelpers';
+import { isAppealCase, getPreviousRulingForViolation, formatViolationDate } from '../utils/caseHelpers';
 import { ScaleIcon, CalendarIcon } from './icons';
 
 interface ViewModalProps {
@@ -20,6 +20,8 @@ const ViewModal: React.FC<ViewModalProps> = ({ session, allSessions = [], onClos
     const details = [
         { label: 'رقم الدعوى', value: session['رقم الدعوى'] },
         { label: 'رقم المخالفة', value: session['رقم المخالفة'] || 'لا يوجد' },
+        { label: 'تاريخ المخالفة', value: formatViolationDate(session['تاريخ المخالفة']) },
+        { label: 'الحكم النهائي', value: session['حكم_نهائي'] || 'غير محدد' },
         { label: 'المدعي', value: session['المدعي'] || 'غير محدد' },
         { label: 'المدعي عليه', value: session['المدعي عليه'] || 'غير محدد' },
         { label: 'المحكمة', value: session['المحكمة'] },

@@ -27,6 +27,8 @@ export interface CaseSession {
   "حضور الجلسة"?: string;
   "محضر الجلسة"?: string;
   "حالة_الدعوى"?: string;
+  "حكم_نهائي"?: string;
+  "تاريخ المخالفة"?: string;
   "السبب"?: string;
   "اضافة_السوابق_القضائية"?: string;
   "قيمة المخالفة"?: string | number;

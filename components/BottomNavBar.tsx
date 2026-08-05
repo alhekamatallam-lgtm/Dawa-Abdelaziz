@@ -15,6 +15,7 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ view, setView, role }) => {
         { id: 'attendance_report', label: 'الحضور', icon: CheckCircleIcon },
         { id: 'appeal_report', label: 'الاستئناف', icon: DocumentTextIcon },
         { id: 'unappealed_report', label: 'إلغاء غير مستأنف', icon: DocumentTextIcon },
+        { id: 'final_judgments_report', label: 'أحكام نهائية', icon: DocumentTextIcon },
         { id: 'assignments', label: 'الجلسات', icon: ClipboardDocumentListIcon },
         { id: 'quick_reports', label: 'الجودة', icon: QuickReportIcon },
         { id: 'settings', label: 'الإعدادات', icon: CogIcon },

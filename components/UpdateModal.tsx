@@ -16,6 +16,8 @@ const UpdateModal: React.FC<UpdateModalProps> = ({ session, allSessions = [], on
     const [attendance, setAttendance] = useState(session['حضور الجلسة'] || '');
     const [minutes, setMinutes] = useState(session['محضر الجلسة'] || '');
     const [caseStatus, setCaseStatus] = useState(session['حالة_الدعوى'] || '');
+    const [finalJudgment, setFinalJudgment] = useState(session['حكم_نهائي'] || '');
+    const [violationDate, setViolationDate] = useState(session['تاريخ المخالفة'] || '');
     const [reason, setReason] = useState(session['السبب'] || '');
     const [addPrecedent, setAddPrecedent] = useState(session['اضافة_السوابق_القضائية'] === 'نعم');
     const [isUpdating, setIsUpdating] = useState(false);
@@ -49,6 +51,8 @@ const UpdateModal: React.FC<UpdateModalProps> = ({ session, allSessions = [], on
                 "حضور الجلسة": attendance,
                 "محضر الجلسة": attendance === 'حضرت' ? minutes : '',
                 "حالة_الدعوى": caseStatus,
+                "حكم_نهائي": finalJudgment,
+                "تاريخ المخالفة": violationDate,
                 "السبب": reason,
                 "اضافة_السوابق_القضائية": addPrecedent ? 'نعم' : 'لا'
             });
@@ -121,6 +125,21 @@ const UpdateModal: React.FC<UpdateModalProps> = ({ session, allSessions = [], on
                                         <option key={opt} value={opt}>{opt}</option>
                                     ))}
                                 </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold mb-1">حالة الحكم النهائي (حكم_نهائي)</label>
+                                <select value={finalJudgment} onChange={e => setFinalJudgment(e.target.value)} className="w-full p-2 border rounded-lg bg-light font-bold">
+                                    <option value="">-- اختر حالة الحكم النهائي --</option>
+                                    <option value="قيد المداولة">قيد المداولة</option>
+                                    <option value="حكم نهائي إلغاء القرار">حكم نهائي إلغاء القرار</option>
+                                    <option value="حكم نهائي عدم القبول">حكم نهائي عدم القبول</option>
+                                    <option value="حكم نهائي رفض الدعوى">حكم نهائي رفض الدعوى</option>
+                                    <option value="حكم نهائي تأييد القرار">حكم نهائي تأييد القرار</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold mb-1">تاريخ المخالفة</label>
+                                <input type="text" value={violationDate} onChange={e => setViolationDate(e.target.value)} className="w-full p-2 border rounded-lg bg-light" placeholder="مثال: 2024-05-12" />
                             </div>
                             {caseStatus && (
                                 <div className="animate-in fade-in slide-in-from-top-2">

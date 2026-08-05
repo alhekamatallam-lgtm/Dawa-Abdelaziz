@@ -201,3 +201,16 @@ export const calculateDaysFromDate = (dateStr?: string, customTodayDate?: Date):
     return diffDays >= 0 ? diffDays : 0;
 };
 
+/**
+ * Formats violation date string cleanly (e.g. 2023-08-12T21:00:00.000Z -> 2023-08-12)
+ */
+export const formatViolationDate = (dateVal?: string | null): string => {
+    if (!dateVal) return 'غير محدد';
+    const str = dateVal.toString().trim();
+    if (!str) return 'غير محدد';
+    if (str.includes('T')) {
+        return str.split('T')[0];
+    }
+    return str;
+};
+

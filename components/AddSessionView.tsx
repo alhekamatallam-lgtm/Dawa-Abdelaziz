@@ -32,6 +32,8 @@ const AddSessionView: React.FC<AddSessionViewProps> = ({ allSessions, currentUse
     const [minutes, setMinutes] = useState('');
     const [precedents, setPrecedents] = useState(false);
     const [status, setStatus] = useState('');
+    const [finalJudgment, setFinalJudgment] = useState('قيد المداولة');
+    const [violationDate, setViolationDate] = useState('');
     const [reason, setReason] = useState('');
 
     const isAppeal = useMemo(() => foundCase ? isAppealCase(foundCase["نوع الدعوى"]) : false, [foundCase]);
@@ -87,6 +89,8 @@ const AddSessionView: React.FC<AddSessionViewProps> = ({ allSessions, currentUse
                 "محضر الجلسة": minutes,
                 "اضافة_السوابق_القضائية": precedents ? 'نعم' : 'لا',
                 "حالة_الدعوى": status,
+                "حكم_نهائي": finalJudgment,
+                "تاريخ المخالفة": violationDate || foundCase["تاريخ المخالفة"],
                 "السبب": reason,
                 "التاريخ": new Date().toLocaleDateString('ar-SA').replace(/\//g, '-'), 
             };
@@ -104,6 +108,8 @@ const AddSessionView: React.FC<AddSessionViewProps> = ({ allSessions, currentUse
                 setMinutes('');
                 setPrecedents(false);
                 setStatus('');
+                setFinalJudgment('قيد المداولة');
+                setViolationDate('');
                 setReason('');
             }, 2000);
 
@@ -261,6 +267,34 @@ const AddSessionView: React.FC<AddSessionViewProps> = ({ allSessions, currentUse
                                             <option key={opt} value={opt}>{opt}</option>
                                         ))}
                                     </select>
+                                </div>
+
+                                {/* Final Judgment */}
+                                <div>
+                                    <label className="block text-sm font-black text-dark mb-3 mr-1">حالة الحكم النهائي (حكم_نهائي)</label>
+                                    <select 
+                                        value={finalJudgment}
+                                        onChange={(e) => setFinalJudgment(e.target.value)}
+                                        className="w-full bg-[#f8f7f4] border-2 border-transparent focus:border-primary focus:bg-white rounded-2xl p-4 font-bold text-dark transition-all outline-none appearance-none cursor-pointer"
+                                    >
+                                        <option value="قيد المداولة">قيد المداولة</option>
+                                        <option value="حكم نهائي إلغاء القرار">حكم نهائي إلغاء القرار</option>
+                                        <option value="حكم نهائي عدم القبول">حكم نهائي عدم القبول</option>
+                                        <option value="حكم نهائي رفض الدعوى">حكم نهائي رفض الدعوى</option>
+                                        <option value="حكم نهائي تأييد القرار">حكم نهائي تأييد القرار</option>
+                                    </select>
+                                </div>
+
+                                {/* Violation Date */}
+                                <div>
+                                    <label className="block text-sm font-black text-dark mb-3 mr-1">تاريخ المخالفة</label>
+                                    <input 
+                                        type="text" 
+                                        value={violationDate}
+                                        onChange={(e) => setViolationDate(e.target.value)}
+                                        placeholder={foundCase["تاريخ المخالفة"] ? `الحالي: ${foundCase["تاريخ المخالفة"]}` : "أدخل تاريخ المخالفة..."}
+                                        className="w-full bg-[#f8f7f4] border-2 border-transparent focus:border-primary focus:bg-white rounded-2xl p-4 font-bold text-dark transition-all outline-none"
+                                    />
                                 </div>
 
                                 {/* Reason */}

@@ -19,9 +19,10 @@ import QualityResultsView from './components/QualityResultsView';
 import SettingsView from './components/SettingsView';
 import AttendanceReport from './components/AttendanceReport';
 import UnappealedAnnulmentsReport from './components/UnappealedAnnulmentsReport';
+import FinalJudgmentsReport from './components/FinalJudgmentsReport';
 import AddSessionView from './components/AddSessionView';
 
-type View = 'calendar' | 'dashboard' | 'assignments' | 'lawyer_report' | 'plaintiff_report' | 'quick_reports' | 'quality_results' | 'settings' | 'attendance_report' | 'appeal_report' | 'unappealed_report' | 'add_session';
+type View = 'calendar' | 'dashboard' | 'assignments' | 'lawyer_report' | 'plaintiff_report' | 'quick_reports' | 'quality_results' | 'settings' | 'attendance_report' | 'appeal_report' | 'unappealed_report' | 'final_judgments_report' | 'add_session';
 type SpecialFilter = 'correctly_linked' | 'unlinked' | 'duplicates';
 interface AssignmentFilters {
     lawyer?: string;
@@ -194,6 +195,7 @@ const App: React.FC = () => {
         { id: 'attendance_report', label: 'تقرير حضور الجلسات', icon: CheckCircleIcon },
         { id: 'appeal_report', label: 'جلسات الاستئناف', icon: DocumentTextIcon },
         { id: 'unappealed_report', label: 'إلغاء لم يستأنف', icon: DocumentTextIcon },
+        { id: 'final_judgments_report', label: 'تقرير الأحكام النهائية', icon: DocumentTextIcon },
         { id: 'add_session', label: 'إضافة جلسة', icon: PlusIcon },
         { id: 'quick_reports', label: 'جودة البيانات', icon: QuickReportIcon },
         { id: 'settings', label: 'الإعدادات', icon: CogIcon },
@@ -325,6 +327,13 @@ const App: React.FC = () => {
                             }} 
                         />}
                         {view === 'unappealed_report' && <UnappealedAnnulmentsReport 
+                            sessions={filteredSessions} 
+                            onSessionClick={(session) => {
+                                setSessionToView(session);
+                                setIsViewModalOpen(true);
+                            }} 
+                        />}
+                        {view === 'final_judgments_report' && <FinalJudgmentsReport 
                             sessions={filteredSessions} 
                             onSessionClick={(session) => {
                                 setSessionToView(session);
