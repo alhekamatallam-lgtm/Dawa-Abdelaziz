@@ -255,7 +255,7 @@ export const FinalJudgmentsReport: React.FC<FinalJudgmentsReportProps> = ({ sess
             </div>
 
             {/* KPI Dashboard Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 print:grid print:grid-cols-4 print:gap-3 print:mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 print:grid print:grid-cols-3 print:gap-3 print:mb-6">
                 <StatCard 
                     title="إجمالي الدعاوى الفريدة" 
                     value={filteredCases.length}
@@ -269,13 +269,6 @@ export const FinalJudgmentsReport: React.FC<FinalJudgmentsReportProps> = ({ sess
                     subtitle="دعاوى صدر بها حكم نهائي بالإلغاء" 
                     icon={<CheckCircleIcon className="w-6 h-6" />}
                     color="green"
-                />
-                <StatCard 
-                    title="قيد المداولة" 
-                    value={`${overallStats.pendingCount} (${formatCurrency(overallStats.pendingValue)} ر.س)`}
-                    subtitle="دعاوى لا زالت جارية ولم تفصل بقاطعة" 
-                    icon={<DocumentTextIcon className="w-6 h-6" />}
-                    color="amber"
                 />
                 <StatCard 
                     title={selectedJudgmentStatus !== 'all' ? `مبالغ المخالفات (${selectedJudgmentStatus})` : 'مجموع مبالغ المخالفات'} 
