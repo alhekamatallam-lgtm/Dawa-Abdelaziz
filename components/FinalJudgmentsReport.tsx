@@ -28,19 +28,23 @@ export const FinalJudgmentsReport: React.FC<FinalJudgmentsReportProps> = ({ sess
     const [selectedJudgmentStatus, setSelectedJudgmentStatus] = useState<string>('all');
     const [selectedCourt, setSelectedCourt] = useState<string>('all');
     const [selectedPlaintiff, setSelectedPlaintiff] = useState<string>('all');
+    const [selectedLitigationDegree, setSelectedLitigationDegree] = useState<string>('all');
 
-    // 1. Group sessions by unique "رقم الدعوى" (Case Number)
+    // 1. Group sessions by unique "رقم_الدعوى_الموحد" or "رقم الدعوى"
     // For each unique case number, pick the session with the actual judgment (non-postponed)
     const uniqueCasesMap = useMemo(() => {
-        const caseNosSet = new Set<string | number>();
+        const caseNosSet = new Set<string>();
         sessions.forEach(s => {
-            if (s['رقم الدعوى']) caseNosSet.add(s['رقم الدعوى']);
+            const key = (s['رقم_الدعوى_الموحد'] || s['رقم الدعوى'] || '').toString().trim();
+            if (key) caseNosSet.add(key);
         });
 
         const result: CaseSession[] = [];
 
-        caseNosSet.forEach(caseNo => {
-            const caseSessions = sessions.filter(s => s['رقم الدعوى'] === caseNo);
+        caseNosSet.forEach(caseKey => {
+            const caseSessions = sessions.filter(s => 
+                (s['رقم_الدعوى_الموحد'] || s['رقم الدعوى'] || '').toString().trim() === caseKey
+            );
             if (caseSessions.length === 0) return;
 
             // Find session with actual judgment ruling (not postponed 'تأجيل')
@@ -54,9 +58,13 @@ export const FinalJudgmentsReport: React.FC<FinalJudgmentsReportProps> = ({ sess
             const violationDate = caseSessions.find(s => !!s['تاريخ المخالفة'])?.['تاريخ المخالفة'] || bestRulingSession['تاريخ المخالفة'];
             const violationVal = caseSessions.find(s => parseCurrencyValue(s['قيمة المخالفة']) > 0)?.['قيمة المخالفة'] || bestRulingSession['قيمة المخالفة'];
             const finalJudg = caseSessions.find(s => !!s['حكم_نهائي'])?.['حكم_نهائي'] || bestRulingSession['حكم_نهائي'];
+            const unifiedNo = caseSessions.find(s => !!s['رقم_الدعوى_الموحد'])?.['رقم_الدعوى_الموحد'] || bestRulingSession['رقم_الدعوى_الموحد'];
+            const litDegree = caseSessions.find(s => !!s['درجة_التقاضي'])?.['درجة_التقاضي'] || bestRulingSession['درجة_التقاضي'];
 
             result.push({
                 ...bestRulingSession,
+                'رقم_الدعوى_الموحد': unifiedNo,
+                'درجة_التقاضي': litDegree,
                 'تاريخ المخالفة': violationDate,
                 'قيمة المخالفة': violationVal,
                 'حكم_نهائي': finalJudg
@@ -94,6 +102,14 @@ export const FinalJudgmentsReport: React.FC<FinalJudgmentsReportProps> = ({ sess
         const set = new Set<string>();
         uniqueCasesMap.forEach(s => {
             if (s['المدعي']) set.add(s['المدعي'].trim());
+        });
+        return Array.from(set).sort();
+    }, [uniqueCasesMap]);
+
+    const uniqueLitigationDegrees = useMemo(() => {
+        const set = new Set<string>();
+        uniqueCasesMap.forEach(s => {
+            if (s['درجة_التقاضي']) set.add(s['درجة_التقاضي'].trim());
         });
         return Array.from(set).sort();
     }, [uniqueCasesMap]);
@@ -143,6 +159,8 @@ export const FinalJudgmentsReport: React.FC<FinalJudgmentsReportProps> = ({ sess
     // Filtered unique cases based on user filters
     const filteredCases = useMemo(() => {
         return uniqueCasesMap.filter(s => {
+            const unifiedNoStr = (s['رقم_الدعوى_الموحد'] || '').toString().toLowerCase();
+            const litDegreeStr = (s['درجة_التقاضي'] || '').toString().toLowerCase();
             const caseNoStr = (s['رقم الدعوى'] || '').toString().toLowerCase();
             const violationNoStr = (s['رقم المخالفة'] || '').toString().toLowerCase();
             const plaintiffStr = (s['المدعي'] || '').toString().toLowerCase();
@@ -152,7 +170,9 @@ export const FinalJudgmentsReport: React.FC<FinalJudgmentsReportProps> = ({ sess
 
             // Search filter
             if (query) {
-                const matches = caseNoStr.includes(query) ||
+                const matches = unifiedNoStr.includes(query) ||
+                    litDegreeStr.includes(query) ||
+                    caseNoStr.includes(query) ||
                     violationNoStr.includes(query) ||
                     plaintiffStr.includes(query) ||
                     courtStr.includes(query) ||
@@ -175,6 +195,11 @@ export const FinalJudgmentsReport: React.FC<FinalJudgmentsReportProps> = ({ sess
                 return false;
             }
 
+            // Litigation Degree Filter
+            if (selectedLitigationDegree !== 'all' && s['درجة_التقاضي']?.trim() !== selectedLitigationDegree) {
+                return false;
+            }
+
             // Plaintiff Filter
             if (selectedPlaintiff !== 'all' && s['المدعي']?.trim() !== selectedPlaintiff) {
                 return false;
@@ -182,7 +207,7 @@ export const FinalJudgmentsReport: React.FC<FinalJudgmentsReportProps> = ({ sess
 
             return true;
         });
-    }, [uniqueCasesMap, searchQuery, selectedJudgmentStatus, selectedCourt, selectedPlaintiff]);
+    }, [uniqueCasesMap, searchQuery, selectedJudgmentStatus, selectedCourt, selectedPlaintiff, selectedLitigationDegree]);
 
     // Total value of currently filtered cases
     const filteredTotalValue = useMemo(() => {
@@ -193,7 +218,9 @@ export const FinalJudgmentsReport: React.FC<FinalJudgmentsReportProps> = ({ sess
     const handleExportExcel = () => {
         const exportData = filteredCases.map((s, idx) => ({
             'م': idx + 1,
-            'رقم الدعوى': s['رقم الدعوى'],
+            'رقم الدعوى الموحد': s['رقم_الدعوى_الموحد'] || s['رقم الدعوى'] || '-',
+            'درجة التقاضي': s['درجة_التقاضي'] || '-',
+            'رقم الدعوى الفرعي': s['رقم الدعوى'] || '-',
             'تاريخ المخالفة': formatViolationDate(s['تاريخ المخالفة']),
             'رقم المخالفة': s['رقم المخالفة'] || '-',
             'حالة الحكم النهائي': s['حكم_نهائي'] || 'قيد المداولة',
@@ -281,13 +308,13 @@ export const FinalJudgmentsReport: React.FC<FinalJudgmentsReportProps> = ({ sess
 
             {/* Filters and Search Bar */}
             <div className="bg-white p-5 rounded-2xl border border-border shadow-sm space-y-4 print:hidden">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                     {/* Search */}
                     <div>
                         <label className="block text-xs font-bold text-dark/70 mb-1.5">بحث شامل:</label>
                         <input
                             type="text"
-                            placeholder="رقم الدعوى، رقم المخالفة، المدعي..."
+                            placeholder="رقم الدعوى الموحد، المخالفة..."
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                             className="w-full bg-light border border-border rounded-xl px-3 py-2.5 text-xs font-bold text-dark placeholder:text-dark/40 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
@@ -305,6 +332,21 @@ export const FinalJudgmentsReport: React.FC<FinalJudgmentsReportProps> = ({ sess
                             <option value="all">كافة الحالات ({judgmentStatuses.length})</option>
                             {judgmentStatuses.map(st => (
                                 <option key={st} value={st}>{st}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Litigation Degree Filter */}
+                    <div>
+                        <label className="block text-xs font-bold text-dark/70 mb-1.5">درجة التقاضي:</label>
+                        <select
+                            value={selectedLitigationDegree}
+                            onChange={e => setSelectedLitigationDegree(e.target.value)}
+                            className="w-full bg-light border border-border rounded-xl px-3 py-2.5 text-xs font-bold text-dark outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer"
+                        >
+                            <option value="all">كافة درجات التقاضي ({uniqueLitigationDegrees.length})</option>
+                            {uniqueLitigationDegrees.map(ld => (
+                                <option key={ld} value={ld}>{ld}</option>
                             ))}
                         </select>
                     </div>
@@ -346,13 +388,14 @@ export const FinalJudgmentsReport: React.FC<FinalJudgmentsReportProps> = ({ sess
                         <span className="text-border/80">|</span>
                         <span>إجمالي قيمة المخالفات: <strong className="text-emerald-800 dir-ltr">{formatCurrency(filteredTotalValue)} ر.س</strong></span>
                     </div>
-                    {(searchQuery || selectedJudgmentStatus !== 'all' || selectedCourt !== 'all' || selectedPlaintiff !== 'all') && (
+                    {(searchQuery || selectedJudgmentStatus !== 'all' || selectedCourt !== 'all' || selectedPlaintiff !== 'all' || selectedLitigationDegree !== 'all') && (
                         <button
                             onClick={() => {
                                 setSearchQuery('');
                                 setSelectedJudgmentStatus('all');
                                 setSelectedCourt('all');
                                 setSelectedPlaintiff('all');
+                                setSelectedLitigationDegree('all');
                             }}
                             className="text-emerald-700 hover:underline font-bold cursor-pointer"
                         >
@@ -374,11 +417,12 @@ export const FinalJudgmentsReport: React.FC<FinalJudgmentsReportProps> = ({ sess
                             <thead className="bg-light border-b border-border text-dark/70 font-bold uppercase tracking-wider">
                                 <tr>
                                     <th className="p-4 w-12 text-center">#</th>
-                                    <th className="p-4">رقم الدعوى</th>
+                                    <th className="p-4">رقم الدعوى الموحد</th>
+                                    <th className="p-4 text-center">درجة التقاضي</th>
                                     <th className="p-4 text-center">تاريخ المخالفة</th>
                                     <th className="p-4">رقم المخالفة</th>
                                     <th className="p-4">المدعي</th>
-                                    <th className="p-4 text-center">حالة الحكم النهائي (حكم_نهائي)</th>
+                                    <th className="p-4 text-center">حالة الحكم النهائي</th>
                                     <th className="p-4 text-left">قيمة المخالفة</th>
                                     <th className="p-4 text-center print:hidden">إجراء</th>
                                 </tr>
@@ -398,10 +442,24 @@ export const FinalJudgmentsReport: React.FC<FinalJudgmentsReportProps> = ({ sess
                                     }
 
                                     return (
-                                        <tr key={`${s['رقم الدعوى']}-${idx}`} className="hover:bg-light/50 transition-colors">
+                                        <tr key={`${s['رقم_الدعوى_الموحد'] || s['رقم الدعوى']}-${idx}`} className="hover:bg-light/50 transition-colors">
                                             <td className="p-4 text-center font-bold text-dark/40">{idx + 1}</td>
                                             <td className="p-4 font-black text-dark">
-                                                {s['رقم الدعوى']}
+                                                <div className="flex flex-col">
+                                                    <span>{s['رقم_الدعوى_الموحد'] || s['رقم الدعوى'] || '-'}</span>
+                                                    {s['رقم_الدعوى_الموحد'] && s['رقم الدعوى'] && s['رقم الدعوى'] !== s['رقم_الدعوى_الموحد'] && (
+                                                        <span className="text-[10px] text-dark/50 font-normal">فرعي: {s['رقم الدعوى']}</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-center font-bold">
+                                                {s['درجة_التقاضي'] ? (
+                                                    <span className="inline-block px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                                        {s['درجة_التقاضي']}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-dark/40">-</span>
+                                                )}
                                             </td>
                                             <td className="p-4 text-center font-bold text-dark/80 dir-ltr">
                                                 {formatViolationDate(s['تاريخ المخالفة'])}
@@ -423,8 +481,8 @@ export const FinalJudgmentsReport: React.FC<FinalJudgmentsReportProps> = ({ sess
                                             <td className="p-4 text-center print:hidden">
                                                 <button
                                                     onClick={() => {
-                                                        const caseNo = s['رقم الدعوى'];
-                                                        const caseSessions = sessions.filter(sess => sess['رقم الدعوى'] === caseNo);
+                                                        const unifiedNo = s['رقم_الدعوى_الموحد'] || s['رقم الدعوى'];
+                                                        const caseSessions = sessions.filter(sess => (sess['رقم_الدعوى_الموحد'] || sess['رقم الدعوى']) === unifiedNo);
                                                         const rulingSess = caseSessions.find(sess => {
                                                             const st = (sess['حالة_الدعوى'] || '').toString().trim();
                                                             return !st.includes('تأجيل');

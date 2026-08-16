@@ -240,7 +240,9 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
 
         // 2. Annulment Decisions Sheet
         const annulmentData = stats.cancelledDecisionSessions.map(session => ({
-            'رقم الدعوى': session['رقم الدعوى'],
+            'رقم الدعوى الموحد': session['رقم_الدعوى_الموحد'] || session['رقم الدعوى'] || '',
+            'درجة التقاضي': session['درجة_التقاضي'] || '',
+            'رقم الدعوى الفرعي': session['رقم الدعوى'] || '',
             'رقم المخالفة': session['رقم المخالفة'] || '',
             'المدعي': session['المدعي'],
             'التصنيف': session['التصنيف'] || '',
@@ -670,7 +672,8 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
                         <table className="w-full border-collapse border border-border text-right mb-12">
                             <thead>
                                 <tr className="bg-primary/5">
-                                    <th className="border border-border p-4 text-sm font-black text-dark">رقم الجلسة</th>
+                                    <th className="border border-border p-4 text-sm font-black text-dark">رقم الدعوى الموحد</th>
+                                    <th className="border border-border p-4 text-sm font-black text-dark text-center">درجة التقاضي</th>
                                     <th className="border border-border p-4 text-sm font-black text-dark">رقم المخالفة</th>
                                     <th className="border border-border p-4 text-sm font-black text-dark">المدعي</th>
                                     <th className="border border-border p-4 text-sm font-black text-dark">التصنيف</th>
@@ -681,7 +684,12 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
                             <tbody>
                                 {attendedSessions.map((session, index) => (
                                     <tr key={`${session.id}-${index}`} className="print:break-inside-avoid">
-                                        <td className="border border-border p-4 text-sm font-bold text-dark">#{session['رقم الدعوى']}</td>
+                                        <td className="border border-border p-4 text-sm font-bold text-dark">
+                                            #{session['رقم_الدعوى_الموحد'] || session['رقم الدعوى'] || '-'}
+                                        </td>
+                                        <td className="border border-border p-4 text-sm font-bold text-center text-dark/80">
+                                            {session['درجة_التقاضي'] || '-'}
+                                        </td>
                                         <td className="border border-border p-4 text-sm font-bold text-dark">{session['رقم المخالفة'] || '-'}</td>
                                         <td className="border border-border p-4 text-sm font-bold text-dark">{session['المدعي']}</td>
                                         <td className="border border-border p-4 text-sm font-bold text-dark">{session['التصنيف'] || '-'}</td>
@@ -727,7 +735,8 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
                         <table className="w-full border-collapse border border-border text-right mb-12">
                             <thead>
                                 <tr className="bg-green-50">
-                                    <th className="border border-border p-4 text-sm font-black text-dark">رقم الجلسة</th>
+                                    <th className="border border-border p-4 text-sm font-black text-dark">رقم الدعوى الموحد</th>
+                                    <th className="border border-border p-4 text-sm font-black text-dark text-center">درجة التقاضي</th>
                                     <th className="border border-border p-4 text-sm font-black text-dark">رقم المخالفة</th>
                                     <th className="border border-border p-4 text-sm font-black text-dark">المدعي</th>
                                     <th className="border border-border p-4 text-sm font-black text-dark">التصنيف</th>
@@ -738,7 +747,12 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
                             <tbody>
                                 {stats.cancelledDecisionSessions.map((session, index) => (
                                     <tr key={`${session.id}-${index}`} className="print:break-inside-avoid">
-                                        <td className="border border-border p-4 text-sm font-bold text-dark">#{session['رقم الدعوى']}</td>
+                                        <td className="border border-border p-4 text-sm font-bold text-dark">
+                                            #{session['رقم_الدعوى_الموحد'] || session['رقم الدعوى'] || '-'}
+                                        </td>
+                                        <td className="border border-border p-4 text-sm font-bold text-center text-dark/80">
+                                            {session['درجة_التقاضي'] || '-'}
+                                        </td>
                                         <td className="border border-border p-4 text-sm font-bold text-dark">{session['رقم المخالفة'] || '-'}</td>
                                         <td className="border border-border p-4 text-sm font-bold text-dark">{session['المدعي']}</td>
                                         <td className="border border-border p-4 text-sm font-bold text-dark">{session['التصنيف'] || '-'}</td>
@@ -809,7 +823,8 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
                         <table className="w-full border-collapse text-right">
                             <thead>
                                 <tr className="bg-primary/5">
-                                    <th className="p-4 text-sm font-black text-dark border-b border-border">رقم الجلسة</th>
+                                    <th className="p-4 text-sm font-black text-dark border-b border-border">رقم الدعوى الموحد</th>
+                                    <th className="p-4 text-sm font-black text-dark border-b border-border text-center">درجة التقاضي</th>
                                     <th className="p-4 text-sm font-black text-dark border-b border-border">رقم المخالفة</th>
                                     <th className="p-4 text-sm font-black text-dark border-b border-border">المدعي</th>
                                     <th className="p-4 text-sm font-black text-dark border-b border-border">التصنيف</th>
@@ -820,12 +835,28 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
                             <tbody>
                                 {attendedSessions.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="p-8 text-center text-text/50 font-bold">لا توجد بيانات للعرض</td>
+                                        <td colSpan={7} className="p-8 text-center text-text/50 font-bold">لا توجد بيانات للعرض</td>
                                     </tr>
                                 ) : (
                                     attendedSessions.map((session, index) => (
                                         <tr key={`${session.id}-${index}`} className="hover:bg-light/50 transition-colors border-b border-border last:border-0">
-                                            <td className="p-4 text-sm font-bold text-dark">#{session['رقم الدعوى']}</td>
+                                            <td className="p-4 text-sm font-bold text-dark">
+                                                <div className="flex flex-col">
+                                                    <span>#{session['رقم_الدعوى_الموحد'] || session['رقم الدعوى'] || '-'}</span>
+                                                    {session['رقم_الدعوى_الموحد'] && session['رقم الدعوى'] && session['رقم الدعوى'] !== session['رقم_الدعوى_الموحد'] && (
+                                                        <span className="text-[10px] text-dark/50 font-normal">فرعي: #{session['رقم الدعوى']}</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-sm font-bold text-center text-dark/80">
+                                                {session['درجة_التقاضي'] ? (
+                                                    <span className="inline-block px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                                                        {session['درجة_التقاضي']}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-dark/40">-</span>
+                                                )}
+                                            </td>
                                             <td className="p-4 text-sm font-bold text-text/70">{session['رقم المخالفة'] || '-'}</td>
                                             <td className="p-4 text-sm font-bold text-dark">{session['المدعي']}</td>
                                             <td className="p-4 text-sm font-bold text-text/70">{session['التصنيف'] || '-'}</td>
@@ -915,7 +946,8 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
                         <table className="w-full border-collapse text-right">
                             <thead>
                                 <tr className="bg-green-50/50">
-                                    <th className="p-4 text-sm font-black text-dark border-b border-border">رقم الجلسة</th>
+                                    <th className="p-4 text-sm font-black text-dark border-b border-border">رقم الدعوى الموحد</th>
+                                    <th className="p-4 text-sm font-black text-dark border-b border-border text-center">درجة التقاضي</th>
                                     <th className="p-4 text-sm font-black text-dark border-b border-border">رقم المخالفة</th>
                                     <th className="p-4 text-sm font-black text-dark border-b border-border">المدعي</th>
                                     <th className="p-4 text-sm font-black text-dark border-b border-border">التصنيف</th>
@@ -926,12 +958,28 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
                             <tbody>
                                 {stats.cancelledDecisionSessions.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="p-8 text-center text-text/50 font-bold">لا توجد قرارات ملغاة حالياً</td>
+                                        <td colSpan={7} className="p-8 text-center text-text/50 font-bold">لا توجد قرارات ملغاة حالياً</td>
                                     </tr>
                                 ) : (
                                     stats.cancelledDecisionSessions.map((session, index) => (
                                         <tr key={`${session.id}-${index}`} className="hover:bg-green-50/30 transition-colors border-b border-border last:border-0">
-                                            <td className="p-4 text-sm font-bold text-dark">#{session['رقم الدعوى']}</td>
+                                            <td className="p-4 text-sm font-bold text-dark">
+                                                <div className="flex flex-col">
+                                                    <span>#{session['رقم_الدعوى_الموحد'] || session['رقم الدعوى'] || '-'}</span>
+                                                    {session['رقم_الدعوى_الموحد'] && session['رقم الدعوى'] && session['رقم الدعوى'] !== session['رقم_الدعوى_الموحد'] && (
+                                                        <span className="text-[10px] text-dark/50 font-normal">فرعي: #{session['رقم الدعوى']}</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-sm font-bold text-center text-dark/80">
+                                                {session['درجة_التقاضي'] ? (
+                                                    <span className="inline-block px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
+                                                        {session['درجة_التقاضي']}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-dark/40">-</span>
+                                                )}
+                                            </td>
                                             <td className="p-4 text-sm font-bold text-text/70">{session['رقم المخالفة'] || '-'}</td>
                                             <td className="p-4 text-sm font-bold text-dark">{session['المدعي']}</td>
                                             <td className="p-4 text-sm font-bold text-text/70">{session['التصنيف'] || '-'}</td>

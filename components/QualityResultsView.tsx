@@ -15,7 +15,7 @@ const QualityResultsView: React.FC<QualityResultsViewProps> = ({ sessions, filte
         const duplicateMap = new Map<string, number[]>();
         
         sessions.forEach(s => {
-            const sessionNum = String(s['رقم الدعوى'] || '').trim();
+            const sessionNum = String(s['رقم_الدعوى_الموحد'] || s['رقم الدعوى'] || '').trim();
             const violationNum = String(s['رقم المخالفة'] || '').trim();
             const date = String(s['التاريخ'] || '').trim();
             
@@ -30,8 +30,8 @@ const QualityResultsView: React.FC<QualityResultsViewProps> = ({ sessions, filte
         duplicateMap.forEach(ids => { if (ids.length > 1) ids.forEach(id => duplicateIds.add(id)); });
 
         if (filterType === 'duplicates') return sessions.filter(s => duplicateIds.has(s.id));
-        if (filterType === 'unlinked') return sessions.filter(s => (!!s['رقم الدعوى'] && !s['رقم المخالفة']) || (!s['رقم الدعوى'] && !!s['رقم المخالفة']));
-        if (filterType === 'correctly_linked') return sessions.filter(s => !!s['رقم الدعوى'] && !!s['رقم المخالفة'] && !duplicateIds.has(s.id));
+        if (filterType === 'unlinked') return sessions.filter(s => (!!(s['رقم_الدعوى_الموحد'] || s['رقم الدعوى']) && !s['رقم المخالفة']) || (!(s['رقم_الدعوى_الموحد'] || s['رقم الدعوى']) && !!s['رقم المخالفة']));
+        if (filterType === 'correctly_linked') return sessions.filter(s => !!(s['رقم_الدعوى_الموحد'] || s['رقم الدعوى']) && !!s['رقم المخالفة'] && !duplicateIds.has(s.id));
         
         return [];
     }, [sessions, filterType]);
@@ -80,9 +80,17 @@ const QualityResultsView: React.FC<QualityResultsViewProps> = ({ sessions, filte
                                 <div className="space-y-2 flex-1">
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <span className="text-xs font-bold bg-light px-2 py-1 rounded text-primary">#{session.id}</span>
-                                        <h4 className="font-bold text-dark text-lg">{session['رقم الدعوى'] || 'بدون رقم دعوى'}</h4>
+                                        <h4 className="font-bold text-dark text-lg">{session['رقم_الدعوى_الموحد'] || session['رقم الدعوى'] || 'بدون رقم دعوى'}</h4>
+                                        {session['رقم_الدعوى_الموحد'] && session['رقم الدعوى'] && session['رقم الدعوى'] !== session['رقم_الدعوى_الموحد'] && (
+                                            <span className="text-xs text-dark/60 bg-gray-100 px-2 py-0.5 rounded font-medium">فرعي: #{session['رقم الدعوى']}</span>
+                                        )}
+                                        {session['درجة_التقاضي'] && (
+                                            <span className="text-xs bg-slate-100 text-slate-800 px-2 py-0.5 rounded border border-slate-200 font-bold">
+                                                {session['درجة_التقاضي']}
+                                            </span>
+                                        )}
                                         {session['رقم المخالفة'] && (
-                                            <span className="text-xs bg-primary/5 text-primary px-2 py-1 rounded border border-primary/10">مخالفة: {session['رقم المخالفة']}</span>
+                                            <span className="text-xs bg-primary/5 text-primary px-2 py-1 rounded border border-primary/10 font-bold">مخالفة: {session['رقم المخالفة']}</span>
                                         )}
                                         {isNoShow && (
                                             <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full font-bold flex items-center gap-1 animate-pulse">

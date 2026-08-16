@@ -147,6 +147,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     const [pendingPlaintiffs, setPendingPlaintiffs] = useState<string[]>([]);
     const [pendingCaseTypes, setPendingCaseTypes] = useState<string[]>([]);
     const [pendingCourts, setPendingCourts] = useState<string[]>([]);
+    const [pendingLitigationDegrees, setPendingLitigationDegrees] = useState<string[]>([]);
 
     const [appliedCircuits, setAppliedCircuits] = useState<string[]>([]);
     const [appliedLawyers, setAppliedLawyers] = useState<string[]>([]);
@@ -154,6 +155,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
     const [appliedPlaintiffs, setAppliedPlaintiffs] = useState<string[]>([]);
     const [appliedCaseTypes, setAppliedCaseTypes] = useState<string[]>([]);
     const [appliedCourts, setAppliedCourts] = useState<string[]>([]);
+    const [appliedLitigationDegrees, setAppliedLitigationDegrees] = useState<string[]>([]);
     const [sortBy, setSortBy] = useState<string>('datetime');
 
     // Removed automatic "Select All" initialization to keep table empty by default
@@ -206,8 +208,9 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                JSON.stringify(pendingDates) !== JSON.stringify(appliedDates) ||
                JSON.stringify(pendingPlaintiffs) !== JSON.stringify(appliedPlaintiffs) ||
                JSON.stringify(pendingCaseTypes) !== JSON.stringify(appliedCaseTypes) ||
-               JSON.stringify(pendingCourts) !== JSON.stringify(appliedCourts);
-    }, [pendingCircuits, appliedCircuits, pendingLawyers, appliedLawyers, pendingDates, appliedDates, pendingPlaintiffs, appliedPlaintiffs, pendingCaseTypes, appliedCaseTypes, pendingCourts, appliedCourts]);
+               JSON.stringify(pendingCourts) !== JSON.stringify(appliedCourts) ||
+               JSON.stringify(pendingLitigationDegrees) !== JSON.stringify(appliedLitigationDegrees);
+    }, [pendingCircuits, appliedCircuits, pendingLawyers, appliedLawyers, pendingDates, appliedDates, pendingPlaintiffs, appliedPlaintiffs, pendingCaseTypes, appliedCaseTypes, pendingCourts, appliedCourts, pendingLitigationDegrees, appliedLitigationDegrees]);
 
     const handleApplyFilters = () => {
         setAppliedCircuits([...pendingCircuits]);
@@ -216,6 +219,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         setAppliedPlaintiffs([...pendingPlaintiffs]);
         setAppliedCaseTypes([...pendingCaseTypes]);
         setAppliedCourts([...pendingCourts]);
+        setAppliedLitigationDegrees([...pendingLitigationDegrees]);
     };
 
     const uniqueCourts = useMemo(() => {
@@ -259,6 +263,11 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         return Array.from(new Set(caseTypes)).sort();
     }, [sessions]);
 
+    const uniqueLitigationDegrees = useMemo(() => {
+        const degrees = sessions.map(s => (s['درجة_التقاضي'] || '').trim()).filter(Boolean);
+        return Array.from(new Set(degrees)).sort();
+    }, [sessions]);
+
     const entitySpecificConflictIds = useMemo(() => {
         if (!showOnlyConflicts) return conflictingSessionIds;
 
@@ -289,6 +298,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                                 appliedLawyers.length > 0 || 
                                 appliedCaseTypes.length > 0 ||
                                 appliedCourts.length > 0 ||
+                                appliedLitigationDegrees.length > 0 ||
                                 searchQuery.trim() !== '' || 
                                 !!specialFilter || 
                                 !!lawyerFilter || 
@@ -303,7 +313,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
             const caseNumberCounts = new Map<string, number[]>();
             const violationNumberCounts = new Map<string, number[]>();
             sessions.forEach(s => {
-                const caseNum = String(s['رقم الدعوى'] || '').trim();
+                const caseNum = String(s['رقم_الدعوى_الموحد'] || s['رقم الدعوى'] || '').trim();
                 if (caseNum) {
                     if (!caseNumberCounts.has(caseNum)) caseNumberCounts.set(caseNum, []);
                     caseNumberCounts.get(caseNum)!.push(s.id);
@@ -319,8 +329,8 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
             violationNumberCounts.forEach(ids => { if (ids.length > 1) ids.forEach(id => duplicateIds.add(id)); });
 
             if (specialFilter === 'duplicates') filtered = sessions.filter(s => duplicateIds.has(s.id));
-            else if (specialFilter === 'unlinked') filtered = sessions.filter(s => (!!s['رقم الدعوى'] && !s['رقم المخالفة']) || (!s['رقم الدعوى'] && !!s['رقم المخالفة']));
-            else if (specialFilter === 'correctly_linked') filtered = sessions.filter(s => !!s['رقم الدعوى'] && !!s['رقم المخالفة'] && !duplicateIds.has(s.id));
+            else if (specialFilter === 'unlinked') filtered = sessions.filter(s => (!!(s['رقم_الدعوى_الموحد'] || s['رقم الدعوى']) && !s['رقم المخالفة']) || (!(s['رقم_الدعوى_الموحد'] || s['رقم الدعوى']) && !!s['رقم المخالفة']));
+            else if (specialFilter === 'correctly_linked') filtered = sessions.filter(s => !!(s['رقم_الدعوى_الموحد'] || s['رقم الدعوى']) && !!s['رقم المخالفة'] && !duplicateIds.has(s.id));
         } else {
             // Default: Hide unassigned sessions if no specific lawyer/plaintiff filter is active
             if (!lawyerFilter && !plaintiffFilter) {
@@ -332,16 +342,21 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         if (searchQuery.trim()) {
             const query = searchQuery.trim().toLowerCase();
             filtered = filtered.filter(s => {
+                const unifiedCaseNum = String(s['رقم_الدعوى_الموحد'] || '').toLowerCase();
+                const litigationDegree = String(s['درجة_التقاضي'] || '').toLowerCase();
                 const caseNum = String(s['رقم الدعوى'] || '').toLowerCase();
                 const sessionNum = String(s['رقم الجلسة'] || '').toLowerCase();
                 const violationNum = String(s['رقم المخالفة'] || '').toLowerCase();
-                return caseNum.includes(query) || sessionNum.includes(query) || violationNum.includes(query);
+                return unifiedCaseNum.includes(query) || litigationDegree.includes(query) || caseNum.includes(query) || sessionNum.includes(query) || violationNum.includes(query);
             });
         }
         
-        // 3. Other Filters (Circuits, Dates, Plaintiffs, Lawyers, Case Types, Courts)
+        // 3. Other Filters (Circuits, Dates, Plaintiffs, Lawyers, Case Types, Courts, Litigation Degrees)
         if (appliedCourts.length > 0) {
             filtered = filtered.filter(s => appliedCourts.includes((s['المحكمة'] || '').trim()));
+        }
+        if (appliedLitigationDegrees.length > 0) {
+            filtered = filtered.filter(s => appliedLitigationDegrees.includes((s['درجة_التقاضي'] || '').trim()));
         }
         if (appliedCircuits.length > 0) {
             filtered = filtered.filter(s => appliedCircuits.includes((s['الدائرة'] || '').trim()));
@@ -367,7 +382,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         if (showOnlyConflicts) filtered = filtered.filter(s => entitySpecificConflictIds.has(s.id));
         
         return filtered;
-    }, [allSessions, sessions, filters, appliedCircuits, appliedDates, appliedPlaintiffs, appliedLawyers, appliedCaseTypes, appliedCourts, searchQuery, entitySpecificConflictIds, specialFilter, lawyerFilter, plaintiffFilter, showOnlyConflicts]);
+    }, [allSessions, sessions, filters, appliedCircuits, appliedDates, appliedPlaintiffs, appliedLawyers, appliedCaseTypes, appliedCourts, appliedLitigationDegrees, searchQuery, entitySpecificConflictIds, specialFilter, lawyerFilter, plaintiffFilter, showOnlyConflicts]);
     
     const dynamicContent = useMemo(() => {
         if (specialFilter === 'correctly_linked') return { title: 'الجلسات الصحيحة', subtitle: 'عرض الجلسات المكتملة البيانات والفريدة.' };
@@ -391,6 +406,8 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         setAppliedCaseTypes([]);
         setPendingCourts([]);
         setAppliedCourts([]);
+        setPendingLitigationDegrees([]);
+        setAppliedLitigationDegrees([]);
         setSortBy('datetime');
         onSearchChange('');
         if (clearSpecial) onClearFilters();
@@ -429,6 +446,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                         </div>
                     </div>
                     <MultiSelectFilter label="المحاكم" options={uniqueCourts} selectedOptions={pendingCourts} onChange={setPendingCourts} />
+                    <MultiSelectFilter label="درجة التقاضي" options={uniqueLitigationDegrees} selectedOptions={pendingLitigationDegrees} onChange={setPendingLitigationDegrees} />
                     <MultiSelectFilter label="أنواع الدعاوى" options={uniqueCaseTypes} selectedOptions={pendingCaseTypes} onChange={setPendingCaseTypes} />
                     <MultiSelectFilter label="التواريخ" options={uniqueDates} selectedOptions={pendingDates} onChange={setPendingDates} />
                     <MultiSelectFilter label="الدوائر" options={uniqueCircuits} selectedOptions={pendingCircuits} onChange={setPendingCircuits} />
@@ -443,9 +461,11 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                             className="w-full bg-light border border-border rounded-lg px-3 py-2 text-xs font-bold text-dark focus:ring-2 focus:ring-primary/20 outline-none transition-all h-[34px] cursor-pointer"
                         >
                             <option value="datetime">التاريخ والوقت</option>
+                            <option value="unifiedCaseNumber">رقم الدعوى الموحد</option>
+                            <option value="caseNumber">رقم الدعوى الفرعي</option>
+                            <option value="litigationDegree">درجة التقاضي</option>
                             <option value="court">المحكمة</option>
                             <option value="caseType">نوع الدعوى</option>
-                            <option value="caseNumber">رقم الدعوى</option>
                             <option value="sessionNumber">رقم الجلسة</option>
                             <option value="circuit">الدائرة</option>
                             <option value="lawyer">المكلف</option>

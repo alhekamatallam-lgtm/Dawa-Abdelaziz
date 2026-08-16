@@ -17,7 +17,7 @@ const QuickReports: React.FC<QuickReportsProps> = ({ sessions, onNavigate }) => 
         const duplicateMap = new Map<string, number[]>();
 
         sessions.forEach(s => {
-            const sessionNum = String(s['رقم الدعوى'] || '').trim();
+            const sessionNum = String(s['رقم_الدعوى_الموحد'] || s['رقم الدعوى'] || '').trim();
             const violationNum = String(s['رقم المخالفة'] || '').trim();
             const date = String(s['التاريخ'] || '').trim();
             
@@ -35,12 +35,12 @@ const QuickReports: React.FC<QuickReportsProps> = ({ sessions, onNavigate }) => 
         });
 
         const unlinkedSessions = sessions.filter(s =>
-            (!!s['رقم الدعوى'] && !s['رقم المخالفة']) ||
-            (!s['رقم الدعوى'] && !!s['رقم المخالفة'])
+            (!!(s['رقم_الدعوى_الموحد'] || s['رقم الدعوى']) && !s['رقم المخالفة']) ||
+            (!(s['رقم_الدعوى_الموحد'] || s['رقم الدعوى']) && !!s['رقم المخالفة'])
         );
         
         const correctlyLinkedSessions = sessions.filter(s =>
-            !!s['رقم الدعوى'] && !!s['رقم المخالفة'] && !duplicateIds.has(s.id)
+            !!(s['رقم_الدعوى_الموحد'] || s['رقم الدعوى']) && !!s['رقم المخالفة'] && !duplicateIds.has(s.id)
         );
 
         return { 

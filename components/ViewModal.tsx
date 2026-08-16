@@ -18,7 +18,9 @@ const ViewModal: React.FC<ViewModalProps> = ({ session, allSessions = [], onClos
     }, [isAppeal, allSessions, session]);
     // Re-ordered to match the visual layout in the image
     const details = [
-        { label: 'رقم الدعوى', value: session['رقم الدعوى'] },
+        { label: 'رقم الدعوى الموحد', value: session['رقم_الدعوى_الموحد'] || session['رقم الدعوى'] || 'غير محدد' },
+        { label: 'درجة التقاضي', value: session['درجة_التقاضي'] || 'غير محددة' },
+        { label: 'رقم الدعوى الفرعي', value: session['رقم الدعوى'] },
         { label: 'رقم المخالفة', value: session['رقم المخالفة'] || 'لا يوجد' },
         { label: 'تاريخ المخالفة', value: formatViolationDate(session['تاريخ المخالفة']) },
         { label: 'الحكم النهائي', value: session['حكم_نهائي'] || 'غير محدد' },

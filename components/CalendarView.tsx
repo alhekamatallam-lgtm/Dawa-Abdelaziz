@@ -77,15 +77,17 @@ const CalendarView: React.FC<CalendarViewProps> = ({
             data = data.filter(day => day.conflicts > 0);
         }
 
-        // 3. البحث برقم الدعوى أو رقم المخالفة
+        // 3. البحث برقم الدعوى الموحد أو رقم الدعوى أو درجة التقاضي أو رقم المخالفة
         if (searchQuery.trim()) {
             const query = searchQuery.trim().toLowerCase();
             data = data.filter(day => {
                 return day.sessions.some(s => {
+                    const unifiedCaseNum = String(s['رقم_الدعوى_الموحد'] || '').toLowerCase();
+                    const litigationDegree = String(s['درجة_التقاضي'] || '').toLowerCase();
                     const caseNum = String(s['رقم الدعوى'] || '').toLowerCase();
                     const sessionNum = String(s['رقم الجلسة'] || '').toLowerCase();
                     const violationNum = String(s['رقم المخالفة'] || '').toLowerCase();
-                    return caseNum.includes(query) || sessionNum.includes(query) || violationNum.includes(query);
+                    return unifiedCaseNum.includes(query) || litigationDegree.includes(query) || caseNum.includes(query) || sessionNum.includes(query) || violationNum.includes(query);
                 });
             });
         }

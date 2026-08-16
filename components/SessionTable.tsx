@@ -46,6 +46,16 @@ const SessionTable: React.FC<SessionTableProps> = ({
             const valB = (b['رقم الدعوى'] || '').trim();
             const cmp = valA.localeCompare(valB, 'ar', { numeric: true });
             if (cmp !== 0) return cmp;
+        } else if (sortBy === 'unifiedCaseNumber') {
+            const valA = String(a['رقم_الدعوى_الموحد'] || a['رقم الدعوى'] || '').trim();
+            const valB = String(b['رقم_الدعوى_الموحد'] || b['رقم الدعوى'] || '').trim();
+            const cmp = valA.localeCompare(valB, 'ar', { numeric: true });
+            if (cmp !== 0) return cmp;
+        } else if (sortBy === 'litigationDegree') {
+            const valA = (a['درجة_التقاضي'] || '').trim();
+            const valB = (b['درجة_التقاضي'] || '').trim();
+            const cmp = valA.localeCompare(valB, 'ar');
+            if (cmp !== 0) return cmp;
         } else if (sortBy === 'sessionNumber') {
             const valA = (a['رقم الجلسة'] || '').trim();
             const valB = (b['رقم الجلسة'] || '').trim();
@@ -148,7 +158,19 @@ const SessionTable: React.FC<SessionTableProps> = ({
                                             <span className="mr-1 text-[10px] text-text font-normal">{session['ص- م']}</span>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-text font-bold">{session['رقم الدعوى']}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-text font-bold">
+                                        <div className="flex flex-col">
+                                            <span>{session['رقم_الدعوى_الموحد'] || session['رقم الدعوى']}</span>
+                                            {session['رقم_الدعوى_الموحد'] && String(session['رقم_الدعوى_الموحد']) !== String(session['رقم الدعوى']) && (
+                                                <span className="text-[10px] text-text/50 font-normal">فرعي: {session['رقم الدعوى']}</span>
+                                            )}
+                                            {session['درجة_التقاضي'] && (
+                                                <span className="inline-block mt-0.5 px-1.5 py-0.5 text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100 rounded w-fit">
+                                                    {session['درجة_التقاضي']}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-indigo-600 font-black">{session['رقم الجلسة'] || '-'}</td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm hidden sm:table-cell">
                                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">

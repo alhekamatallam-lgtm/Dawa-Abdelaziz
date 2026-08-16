@@ -17,6 +17,7 @@ const UnappealedAnnulmentsReport: React.FC<UnappealedAnnulmentsReportProps> = ({
     const [selectedPlaintiff, setSelectedPlaintiff] = useState<string>('all');
     const [selectedDaysFilter, setSelectedDaysFilter] = useState<string>('all');
     const [selectedCaseStatus, setSelectedCaseStatus] = useState<string>('all');
+    const [selectedLitigationDegree, setSelectedLitigationDegree] = useState<string>('all');
     const [umqData, setUmqData] = useState<{
         gregorianDateObj: Date;
         hijriDateObj: { year: number; month: number; day: number; nameAr: string } | null;
@@ -91,7 +92,7 @@ const UnappealedAnnulmentsReport: React.FC<UnappealedAnnulmentsReportProps> = ({
         const map = new Map<string, CaseSession>();
         allInitialAnnulledSessions.forEach(s => {
             const vNo = (s['رقم المخالفة'] || '').toString().trim();
-            const caseNo = (s['رقم الدعوى'] || '').toString().trim();
+            const caseNo = (s['رقم_الدعوى_الموحد'] || s['رقم الدعوى'] || '').toString().trim();
             const appealReq = (s['طلب_استئناف'] || '').toString().trim();
 
             // Must NOT have request for appeal = "نعم"
@@ -106,7 +107,7 @@ const UnappealedAnnulmentsReport: React.FC<UnappealedAnnulmentsReportProps> = ({
             } else if (caseNo !== '') {
                 const isAppealed = sessions.some(sec => 
                     ((sec['نوع الدعوى'] || '').toString().includes('استئناف') || (sec['طلب_استئناف'] || '').toString().trim() === 'نعم') && 
-                    (sec['رقم الدعوى'] || '').toString().trim() === caseNo
+                    ((sec['رقم_الدعوى_الموحد'] || sec['رقم الدعوى'] || '').toString().trim() === caseNo)
                 );
                 if (!isAppealed && !map.has(`c_${caseNo}`)) {
                     map.set(`c_${caseNo}`, s);
@@ -177,6 +178,15 @@ const UnappealedAnnulmentsReport: React.FC<UnappealedAnnulmentsReportProps> = ({
         return Array.from(set).sort();
     }, [unappealedAnnulledSessions]);
 
+    const uniqueLitigationDegrees = useMemo(() => {
+        const set = new Set<string>();
+        unappealedAnnulledSessions.forEach(s => {
+            const ld = (s['درجة_التقاضي'] || '').toString().trim();
+            if (ld) set.add(ld);
+        });
+        return Array.from(set).sort();
+    }, [unappealedAnnulledSessions]);
+
     // Statistics for days passed
     const daysStats = useMemo(() => {
         let count50Plus = 0;
@@ -199,12 +209,14 @@ const UnappealedAnnulmentsReport: React.FC<UnappealedAnnulmentsReportProps> = ({
             const court = (s['المحكمة'] || '').toString().trim();
             const plaintiff = (s['المدعي'] || '').toString().trim();
             const caseStatus = (s['حالة_الدعوى'] || '').toString().trim();
+            const litigationDegree = (s['درجة_التقاضي'] || '').toString().trim();
             const dateStr = getBestSessionDate(s);
             const daysPassed = calculateDaysFromDate(dateStr, umqData?.gregorianDateObj);
 
             if (selectedCourt !== 'all' && court !== selectedCourt) return false;
             if (selectedPlaintiff !== 'all' && plaintiff !== selectedPlaintiff) return false;
             if (selectedCaseStatus !== 'all' && caseStatus !== selectedCaseStatus) return false;
+            if (selectedLitigationDegree !== 'all' && litigationDegree !== selectedLitigationDegree) return false;
 
             if (selectedDaysFilter === '50plus') {
                 if (daysPassed === null || daysPassed < 50) return false;
@@ -214,6 +226,8 @@ const UnappealedAnnulmentsReport: React.FC<UnappealedAnnulmentsReportProps> = ({
 
             if (searchQuery.trim() !== '') {
                 const q = searchQuery.trim().toLowerCase();
+                const unifiedCaseNo = (s['رقم_الدعوى_الموحد'] || '').toString().toLowerCase();
+                const litDegree = (s['درجة_التقاضي'] || '').toString().toLowerCase();
                 const caseNo = (s['رقم الدعوى'] || '').toString().toLowerCase();
                 const violationNo = (s['رقم المخالفة'] || '').toString().toLowerCase();
                 const lawyer = (s['المحامي المكلف'] || '').toString().toLowerCase();
@@ -223,7 +237,9 @@ const UnappealedAnnulmentsReport: React.FC<UnappealedAnnulmentsReportProps> = ({
                 const searchLocation = (s['البحث_عن_الدعوى'] || '').toString().toLowerCase();
                 const appealReq = (s['طلب_استئناف'] || '').toString().toLowerCase();
 
-                return caseNo.includes(q) || 
+                return unifiedCaseNo.includes(q) ||
+                       litDegree.includes(q) ||
+                       caseNo.includes(q) || 
                        violationNo.includes(q) || 
                        lawyer.includes(q) || 
                        courtName.includes(q) || 
@@ -235,7 +251,7 @@ const UnappealedAnnulmentsReport: React.FC<UnappealedAnnulmentsReportProps> = ({
 
             return true;
         });
-    }, [unappealedAnnulledSessions, selectedCourt, selectedPlaintiff, selectedCaseStatus, selectedDaysFilter, searchQuery, umqData]);
+    }, [unappealedAnnulledSessions, selectedCourt, selectedPlaintiff, selectedCaseStatus, selectedLitigationDegree, selectedDaysFilter, searchQuery, umqData]);
 
     // Export to Excel
     const handleExportExcel = () => {
@@ -245,7 +261,9 @@ const UnappealedAnnulmentsReport: React.FC<UnappealedAnnulmentsReportProps> = ({
 
             return {
                 'م': idx + 1,
-                'رقم الدعوى': s['رقم الدعوى'] || '-',
+                'رقم الدعوى الموحد': s['رقم_الدعوى_الموحد'] || s['رقم الدعوى'] || '-',
+                'درجة التقاضي': s['درجة_التقاضي'] || '-',
+                'رقم الدعوى الفرعي': s['رقم الدعوى'] || '-',
                 'رقم المخالفة': s['رقم المخالفة'] || '-',
                 'المدعي': s['المدعي'] || '-',
                 'المحكمة': s['المحكمة'] || '-',
@@ -462,9 +480,24 @@ const UnappealedAnnulmentsReport: React.FC<UnappealedAnnulmentsReportProps> = ({
                             ))}
                         </select>
                     </div>
+
+                    {/* Litigation Degree Filter */}
+                    <div>
+                        <label className="block text-xs font-bold text-dark/70 mb-1.5">درجة التقاضي:</label>
+                        <select 
+                            value={selectedLitigationDegree} 
+                            onChange={e => setSelectedLitigationDegree(e.target.value)}
+                            className="w-full bg-light border border-border rounded-xl px-3 py-2.5 text-xs font-bold text-dark outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer"
+                        >
+                            <option value="all">كافة الدرجات ({uniqueLitigationDegrees.length})</option>
+                            {uniqueLitigationDegrees.map((ld, i) => (
+                                <option key={`${ld}-${i}`} value={ld}>{ld}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
 
-                {(searchQuery || selectedCourt !== 'all' || selectedPlaintiff !== 'all' || selectedCaseStatus !== 'all' || selectedDaysFilter !== 'all') && (
+                {(searchQuery || selectedCourt !== 'all' || selectedPlaintiff !== 'all' || selectedCaseStatus !== 'all' || selectedDaysFilter !== 'all' || selectedLitigationDegree !== 'all') && (
                     <div className="flex items-center justify-between pt-2 border-t border-border/50 text-xs">
                         <span className="text-dark/60 font-medium flex items-center gap-2">
                             <span>عدد النتائج المطابقة: <strong className="text-emerald-700">{filteredSessions.length}</strong> من أصل {unappealedAnnulledSessions.length}</span>
@@ -481,6 +514,7 @@ const UnappealedAnnulmentsReport: React.FC<UnappealedAnnulmentsReportProps> = ({
                                 setSelectedPlaintiff('all');
                                 setSelectedCaseStatus('all');
                                 setSelectedDaysFilter('all');
+                                setSelectedLitigationDegree('all');
                             }}
                             className="text-emerald-700 hover:underline font-bold"
                         >
@@ -508,7 +542,8 @@ const UnappealedAnnulmentsReport: React.FC<UnappealedAnnulmentsReportProps> = ({
                             <thead>
                                 <tr className="bg-emerald-900 text-white text-xs font-bold">
                                     <th className="p-4 w-12 text-center">#</th>
-                                    <th className="p-4">رقم الدعوى</th>
+                                    <th className="p-4">رقم الدعوى الموحد</th>
+                                    <th className="p-4 text-center">درجة التقاضي</th>
                                     <th className="p-4">رقم المخالفة</th>
                                     <th className="p-4">المدعي</th>
                                     <th className="p-4">المحكمة / الدائرة</th>
@@ -535,7 +570,21 @@ const UnappealedAnnulmentsReport: React.FC<UnappealedAnnulmentsReportProps> = ({
                                         >
                                             <td className="p-4 text-center font-bold text-dark/50">{index + 1}</td>
                                             <td className="p-4 font-bold text-dark">
-                                                #{session['رقم الدعوى'] || '-'}
+                                                <div className="flex flex-col">
+                                                    <span>#{session['رقم_الدعوى_الموحد'] || session['رقم الدعوى'] || '-'}</span>
+                                                    {session['رقم_الدعوى_الموحد'] && session['رقم الدعوى'] && session['رقم الدعوى'] !== session['رقم_الدعوى_الموحد'] && (
+                                                        <span className="text-[10px] text-dark/50 font-normal">فرعي: #{session['رقم الدعوى']}</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-center font-bold">
+                                                {session['درجة_التقاضي'] ? (
+                                                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100/60 text-emerald-900 border border-emerald-200">
+                                                        {session['درجة_التقاضي']}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-dark/40">-</span>
+                                                )}
                                             </td>
                                             <td className="p-4 font-bold text-emerald-800 dir-ltr text-right">
                                                 {session['رقم المخالفة'] || '-'}
