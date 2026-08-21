@@ -38,12 +38,46 @@ export const fetchInitialData = async (): Promise<{ sessions: CaseSession[], use
     // جلب الجلسات من data.dd
     const rawSessions = result.data.dd || [];
     const sessions = rawSessions.map((item: any) => {
-        const cleaned = cleanObjectKeysAndValues(item) as CaseSession;
+        const cleaned = cleanObjectKeysAndValues(item) as any;
+        
+        // توحيد مسميات الحقول المختلفة (مع مسافة أو شرطة سفلية)
+        if (!cleaned['رقم_الدعوى_الموحد']) {
+            cleaned['رقم_الدعوى_الموحد'] = cleaned['رقم الدعوى الموحد'] || cleaned['رقم القضية الموحد'] || cleaned['الرقم الموحد'] || cleaned['رقم_القضية_الموحد'];
+        }
+        if (!cleaned['درجة_التقاضي']) {
+            cleaned['درجة_التقاضي'] = cleaned['درجة التقاضي'] || cleaned['درجة تقاضي'];
+        }
+        if (!cleaned['حالة_الدعوى']) {
+            cleaned['حالة_الدعوى'] = cleaned['حالة الدعوى'];
+        }
+        if (!cleaned['حكم_نهائي']) {
+            cleaned['حكم_نهائي'] = cleaned['حكم نهائي'];
+        }
+        if (!cleaned['طلب_استئناف']) {
+            cleaned['طلب_استئناف'] = cleaned['طلب استئناف'];
+        }
+        if (!cleaned['البحث_عن_الدعوى']) {
+            cleaned['البحث_عن_الدعوى'] = cleaned['البحث عن الدعوى'];
+        }
+        if (!cleaned['اضافة_السوابق_القضائية']) {
+            cleaned['اضافة_السوابق_القضائية'] = cleaned['اضافة السوابق القضائية'];
+        }
+        if (!cleaned['تاريخ_المخالفة']) {
+            cleaned['تاريخ_المخالفة'] = cleaned['تاريخ المخالفة'];
+        }
+
+        // تحويل القيم النصية وضمان تنظيفها
+        if (cleaned['رقم_الدعوى_الموحد'] !== undefined && cleaned['رقم_الدعوى_الموحد'] !== null) {
+            cleaned['رقم_الدعوى_الموحد'] = String(cleaned['رقم_الدعوى_الموحد']).trim();
+        }
+        if (cleaned['درجة_التقاضي'] !== undefined && cleaned['درجة_التقاضي'] !== null) {
+            cleaned['درجة_التقاضي'] = String(cleaned['درجة_التقاضي']).trim();
+        }
         // ضمان أن كود المدعي هو نص دائماً لتوحيد المقارنات
         if (cleaned['كود_المدعي'] !== undefined && cleaned['كود_المدعي'] !== null) {
             cleaned['كود_المدعي'] = String(cleaned['كود_المدعي']).trim();
         }
-        return cleaned;
+        return cleaned as CaseSession;
     });
     console.log(`✅ تم جلب ${sessions.length} جلسة من [data.dd]`);
 

@@ -3,6 +3,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import type { CaseSession } from '../types';
 import SessionTable from './SessionTable';
 import { ClockIcon, WarningIcon, ArrowRightIcon, UserGroupIcon, ClipboardDocumentListIcon } from './icons';
+import { matchSessionSearch } from '../utils/searchUtils';
 
 interface SessionDetailsProps {
     selectedDate: string | null;
@@ -100,13 +101,7 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
         
         // فلترة البحث
         if (searchQuery.trim()) {
-            const query = searchQuery.trim().toLowerCase();
-            filtered = filtered.filter(s => {
-                const caseNum = String(s['رقم الدعوى'] || '').toLowerCase();
-                const sessionNum = String(s['رقم الجلسة'] || '').toLowerCase();
-                const violationNum = String(s['رقم المخالفة'] || '').toLowerCase();
-                return caseNum.includes(query) || sessionNum.includes(query) || violationNum.includes(query);
-            });
+            filtered = filtered.filter(s => matchSessionSearch(s, searchQuery));
         }
 
         if (selectedCircuit) {

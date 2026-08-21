@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import type { CaseSession } from '../types';
 import SessionTable from './SessionTable';
 import { ClipboardDocumentListIcon, WarningIcon, CheckBadgeIcon } from './icons';
+import { matchSessionSearch } from '../utils/searchUtils';
 
 // --- New MultiSelectFilter Component ---
 interface MultiSelectFilterProps {
@@ -340,15 +341,7 @@ const AssignmentsView: React.FC<AssignmentsViewProps> = ({
         
         // 2. Search Query (Global filter)
         if (searchQuery.trim()) {
-            const query = searchQuery.trim().toLowerCase();
-            filtered = filtered.filter(s => {
-                const unifiedCaseNum = String(s['رقم_الدعوى_الموحد'] || '').toLowerCase();
-                const litigationDegree = String(s['درجة_التقاضي'] || '').toLowerCase();
-                const caseNum = String(s['رقم الدعوى'] || '').toLowerCase();
-                const sessionNum = String(s['رقم الجلسة'] || '').toLowerCase();
-                const violationNum = String(s['رقم المخالفة'] || '').toLowerCase();
-                return unifiedCaseNum.includes(query) || litigationDegree.includes(query) || caseNum.includes(query) || sessionNum.includes(query) || violationNum.includes(query);
-            });
+            filtered = filtered.filter(s => matchSessionSearch(s, searchQuery));
         }
         
         // 3. Other Filters (Circuits, Dates, Plaintiffs, Lawyers, Case Types, Courts, Litigation Degrees)
