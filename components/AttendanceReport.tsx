@@ -83,7 +83,7 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
         const withMinutes = attendedSessionsRaw.filter(s => s['محضر الجلسة'] && s['محضر الجلسة'].trim() !== '').length;
         const withoutMinutes = totalAttended - withMinutes;
         
-        // Detailed stats for each case status matching the technical analysis image
+        // Detailed stats for each case status based on Unified Case Number (رقم الدعوى الموحد)
         const getStatusStats = (statusNames: string[]) => {
             const list = relevantSessions.filter(s => {
                 const sStatus = s['حالة_الدعوى']?.toString().trim() || '';
@@ -91,21 +91,45 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
             });
             
             const rows = list.length;
+
+            // 1. Unique Unified Cases Map
+            const uniqueCasesMap = new Map<string, CaseSession[]>();
+            list.forEach(s => {
+                const caseKey = (s['رقم_الدعوى_الموحد'] || s['رقم الدعوى'])?.toString().trim();
+                if (caseKey && caseKey !== '') {
+                    if (!uniqueCasesMap.has(caseKey)) uniqueCasesMap.set(caseKey, []);
+                    uniqueCasesMap.get(caseKey)!.push(s);
+                }
+            });
+            const uniqueCasesCount = uniqueCasesMap.size;
+
+            // 2. Unique Violations & Value (highest value per unique violation / unique case)
             const uniqueViolationsMap = new Map<string, number>();
             list.forEach(s => {
                 const vId = s['رقم المخالفة']?.toString().trim();
-                if (vId && vId !== '') {
-                    const val = normalizeNumber(s['قيمة المخالفة']);
-                    const currentMax = uniqueViolationsMap.get(vId) || 0;
-                    if (val > currentMax) uniqueViolationsMap.set(vId, val);
-                    else if (!uniqueViolationsMap.has(vId)) uniqueViolationsMap.set(vId, val);
+                const caseKey = (s['رقم_الدعوى_الموحد'] || s['رقم الدعوى'])?.toString().trim();
+                const key = (vId && vId !== '') ? vId : (caseKey && caseKey !== '' ? `case_${caseKey}` : `temp_${s.id}`);
+                const val = normalizeNumber(s['قيمة المخالفة']);
+                const currentMax = uniqueViolationsMap.get(key) || 0;
+                if (val > currentMax || !uniqueViolationsMap.has(key)) {
+                    uniqueViolationsMap.set(key, val);
                 }
             });
             
-            const uniqueCount = uniqueViolationsMap.size;
+            const uniqueViolationsCount = Array.from(new Set(
+                list.map(s => s['رقم المخالفة']?.toString().trim()).filter(v => v !== undefined && v !== null && v !== '')
+            )).length;
+
             const totalVal = Array.from(uniqueViolationsMap.values()).reduce((a, b) => a + b, 0);
             
-            return { rows, uniqueCount, totalVal, list };
+            return { 
+                rows, 
+                uniqueCasesCount, 
+                uniqueViolationsCount, 
+                uniqueCount: uniqueCasesCount > 0 ? uniqueCasesCount : uniqueViolationsCount, 
+                totalVal, 
+                list 
+            };
         };
 
         const annulment = getStatusStats(['إلغاء القرار', 'تنفيذ حكم إلغاء القرار', 'إلغاء القرار(حكم الاستئناف)']);
@@ -116,7 +140,7 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
         // For the table display, we still need unique cases for the annulment section
         const uniqueCancelledMap = new Map<string, CaseSession>();
         annulment.list.forEach(s => {
-            const caseId = s['رقم الدعوى']?.toString().trim();
+            const caseId = (s['رقم_الدعوى_الموحد'] || s['رقم الدعوى'])?.toString().trim();
             const vId = s['رقم المخالفة']?.toString().trim();
             const key = caseId && caseId !== '' ? caseId : (vId && vId !== '' ? `v_${vId}` : `temp_${Math.random()}`);
             if (!uniqueCancelledMap.has(key)) {
@@ -148,15 +172,16 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
         
         // Count entries that are not entirely empty (aligning with total records 780)
         const sessionsWithNumber = relevantSessions.filter(s => 
+            (s['رقم_الدعوى_الموحد'] && s['رقم_الدعوى_الموحد'].toString().trim() !== '') ||
             (s['رقم الدعوى'] && s['رقم الدعوى'].toString().trim() !== '') ||
             (s['تاريخ الموعد'] && s['تاريخ الموعد'].toString().trim() !== '') ||
             (s['رقم المخالفة'] && s['رقم المخالفة'].toString().trim() !== '')
         ).length;
 
-        // Count unique cases (رقم الدعوى) in the entire dataset
+        // Count unique cases (رقم الدعوى الموحد بدون تكرار) in the entire dataset
         const uniqueCases = new Set(
             relevantSessions
-                .map(s => s['رقم الدعوى']?.toString().trim())
+                .map(s => (s['رقم_الدعوى_الموحد'] || s['رقم الدعوى'])?.toString().trim())
                 .filter(v => v !== undefined && v !== null && v !== '')
         ).size;
 
@@ -238,7 +263,39 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
             { 'المؤشر': 'مخالفات بدون قيمة', 'القيمة': stats.violationsWithoutValue, 'ملاحظات': 'لم يسجل لها قيمة' },
         ];
 
-        // 2. Annulment Decisions Sheet
+        // 2. Status Distribution Sheet
+        const statusDistributionData = [
+            {
+                'حالة الدعوى': 'تأجيل الجلسة',
+                'الدعاوى الفريدة (رقم الدعوى الموحد)': stats.adjournment.uniqueCasesCount,
+                'المخالفات الفريدة': stats.adjournment.uniqueViolationsCount,
+                'إجمالي سجلات الجلسات': stats.adjournment.rows,
+                'إجمالي القيمة (ر.س)': stats.adjournment.totalVal
+            },
+            {
+                'حالة الدعوى': 'إلغاء القرار',
+                'الدعاوى الفريدة (رقم الدعوى الموحد)': stats.annulment.uniqueCasesCount,
+                'المخالفات الفريدة': stats.annulment.uniqueViolationsCount,
+                'إجمالي سجلات الجلسات': stats.annulment.rows,
+                'إجمالي القيمة (ر.س)': stats.annulment.totalVal
+            },
+            {
+                'حالة الدعوى': 'عدم القبول',
+                'الدعاوى الفريدة (رقم الدعوى الموحد)': stats.nonAcceptance.uniqueCasesCount,
+                'المخالفات الفريدة': stats.nonAcceptance.uniqueViolationsCount,
+                'إجمالي سجلات الجلسات': stats.nonAcceptance.rows,
+                'إجمالي القيمة (ر.س)': stats.nonAcceptance.totalVal
+            },
+            {
+                'حالة الدعوى': 'رفض الدعوى',
+                'الدعاوى الفريدة (رقم الدعوى الموحد)': stats.refusal.uniqueCasesCount,
+                'المخالفات الفريدة': stats.refusal.uniqueViolationsCount,
+                'إجمالي سجلات الجلسات': stats.refusal.rows,
+                'إجمالي القيمة (ر.س)': stats.refusal.totalVal
+            }
+        ];
+
+        // 3. Annulment Decisions Sheet
         const annulmentData = stats.cancelledDecisionSessions.map(session => ({
             'رقم الدعوى الموحد': session['رقم_الدعوى_الموحد'] || session['رقم الدعوى'] || '',
             'درجة التقاضي': session['درجة_التقاضي'] || '',
@@ -257,6 +314,9 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
         
         const wsStats = utils.json_to_sheet(dashboardStats);
         utils.book_append_sheet(wb, wsStats, "ملخص الإحصائيات");
+
+        const wsDist = utils.json_to_sheet(statusDistributionData);
+        utils.book_append_sheet(wb, wsDist, "توزيع حالات الدعاوى");
 
         if (annulmentData.length > 0) {
             const wsAnnulment = utils.json_to_sheet(annulmentData);
@@ -379,19 +439,30 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
                 />
             </div>
 
-            {/* Status Distribution Table - Matching Technical Analysis */}
+            {/* Status Distribution Table - Rebuilt with Unified Case Numbers */}
             <div className="bg-white rounded-[2rem] border border-border shadow-md overflow-hidden print:hidden">
-                <div className="p-6 border-b border-border bg-gray-50 flex items-center gap-3">
-                    <TableCellsIcon className="w-6 h-6 text-primary" />
-                    <h3 className="text-xl font-black text-dark tracking-tight">تفاصيل حالة الدعوى (توزيع الحالات)</h3>
+                <div className="p-6 border-b border-border bg-gray-50 flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-3">
+                        <TableCellsIcon className="w-6 h-6 text-primary" />
+                        <div>
+                            <h3 className="text-xl font-black text-dark tracking-tight">تفاصيل حالة الدعوى (توزيع الحالات)</h3>
+                            <p className="text-xs font-bold text-dark/60 mt-0.5">محسوبة بناءً على رقم الدعوى الموحد بدون تكرار</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold bg-primary/10 text-primary px-3 py-1 rounded-lg border border-primary/20">
+                            إجمالي الدعاوى الفريدة: {stats.uniqueCases}
+                        </span>
+                    </div>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-right border-collapse">
                         <thead>
                             <tr className="bg-primary/5 text-primary">
                                 <th className="p-4 font-black border-b border-border">حالة الدعوى</th>
-                                <th className="p-4 font-black border-b border-border text-center">إجمالي السجلات</th>
-                                <th className="p-4 font-black border-b border-border text-center">مخالفات فريدة</th>
+                                <th className="p-4 font-black border-b border-border text-center">الدعاوى الفريدة (رقم الدعوى الموحد)</th>
+                                <th className="p-4 font-black border-b border-border text-center">المخالفات الفريدة</th>
+                                <th className="p-4 font-black border-b border-border text-center">إجمالي سجلات الجلسات</th>
                                 <th className="p-4 font-black border-b border-border text-left">إجمالي القيمة (ر.س)</th>
                             </tr>
                         </thead>
@@ -406,15 +477,43 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
                                     <td className="p-4 font-black text-dark">
                                         <div className="flex items-center gap-3">
                                             <div className={`w-3 h-3 rounded-full ${row.bg.replace('bg-', 'bg-opacity-100 bg-')}`} />
-                                            {row.label}
+                                            <span className="text-base">{row.label}</span>
                                         </div>
                                     </td>
-                                    <td className="p-4 text-center font-bold text-dark/70">{row.stats.rows}</td>
-                                    <td className="p-4 text-center font-bold text-dark/70">{row.stats.uniqueCount}</td>
-                                    <td className={`p-4 text-left font-black ${row.color}`}>{formatCurrency(row.stats.totalVal)} ر.س</td>
+                                    <td className="p-4 text-center font-black text-dark">
+                                        <span className="inline-block px-3 py-1 rounded-full bg-light border border-border text-primary font-black">
+                                            {row.stats.uniqueCasesCount}
+                                        </span>
+                                    </td>
+                                    <td className="p-4 text-center font-bold text-dark/80">
+                                        {row.stats.uniqueViolationsCount}
+                                    </td>
+                                    <td className="p-4 text-center font-bold text-dark/60">
+                                        {row.stats.rows}
+                                    </td>
+                                    <td className={`p-4 text-left font-black text-base ${row.color}`}>
+                                        {formatCurrency(row.stats.totalVal)} ر.س
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
+                        <tfoot>
+                            <tr className="bg-gray-50/80 font-black border-t-2 border-border text-dark">
+                                <td className="p-4 font-black text-primary">المجموع الكلي</td>
+                                <td className="p-4 text-center font-black text-primary">
+                                    {stats.adjournment.uniqueCasesCount + stats.annulment.uniqueCasesCount + stats.nonAcceptance.uniqueCasesCount + stats.refusal.uniqueCasesCount}
+                                </td>
+                                <td className="p-4 text-center font-black text-dark">
+                                    {stats.uniqueViolations}
+                                </td>
+                                <td className="p-4 text-center font-black text-dark/70">
+                                    {stats.adjournment.rows + stats.annulment.rows + stats.nonAcceptance.rows + stats.refusal.rows}
+                                </td>
+                                <td className="p-4 text-left font-black text-primary">
+                                    {formatCurrency(stats.adjournment.totalVal + stats.annulment.totalVal + stats.nonAcceptance.totalVal + stats.refusal.totalVal)} ر.س
+                                </td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>
@@ -622,8 +721,9 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
                                 <thead>
                                     <tr className="bg-primary/10 text-primary">
                                         <th className="p-3 border border-gray-200 font-black">حالة الدعوى</th>
+                                        <th className="p-3 border border-gray-200 font-black text-center">الدعاوى الفريدة (رقم الدعوى الموحد)</th>
+                                        <th className="p-3 border border-gray-200 font-black text-center">المخالفات الفريدة</th>
                                         <th className="p-3 border border-gray-200 font-black text-center">إجمالي السجلات</th>
-                                        <th className="p-3 border border-gray-200 font-black text-center">مخالفات فريدة</th>
                                         <th className="p-3 border border-gray-200 font-black text-left">إجمالي القيمة (ر.س)</th>
                                     </tr>
                                 </thead>
@@ -636,15 +736,16 @@ const AttendanceReport: React.FC<AttendanceReportProps> = ({
                                     ].map((row) => (
                                         <tr key={row.label} className="border-b last:border-0 border-gray-100">
                                             <td className="p-3 border border-gray-200 font-bold bg-gray-50/50">{row.label}</td>
+                                            <td className="p-3 border border-gray-200 text-center font-bold text-dark">{row.stats.uniqueCasesCount}</td>
+                                            <td className="p-3 border border-gray-200 text-center font-bold text-dark/70">{row.stats.uniqueViolationsCount}</td>
                                             <td className="p-3 border border-gray-200 text-center font-bold text-dark/70">{row.stats.rows}</td>
-                                            <td className="p-3 border border-gray-200 text-center font-bold text-dark/70">{row.stats.uniqueCount}</td>
                                             <td className="p-3 border border-gray-200 text-left font-black text-dark">{formatCurrency(row.stats.totalVal)} ر.س</td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                             <p className="text-[10px] text-gray-400 mt-4 italic font-bold">
-                                * يتم احتساب القيمة بناءً على أعلى سجل مسجل لكل مخالفة فريدة لتجنب التكرار.
+                                * يتم احتساب الدعاوى الفريدة بناءً على رقم الدعوى الموحد بدون تكرار.
                             </p>
                         </div>
                     </div>
